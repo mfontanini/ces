@@ -1,6 +1,7 @@
 import requests
 import threading
 import json
+from exceptions import *
 
 class PriceDatabase:
     CMC_URL = 'https://api.coinmarketcap.com/v1/ticker/'
@@ -31,7 +32,7 @@ class PriceDatabase:
             if code in self._prices:
                 return self._prices[code]
             else:
-                raise Exception('Currency {0} not found'.format(code))
+                raise UnknownCurrencyException(code)
 
     def poll_prices(self):
         while self._running:

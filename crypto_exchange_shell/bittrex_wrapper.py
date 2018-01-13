@@ -1,5 +1,6 @@
 from bittrex.bittrex import *
 from models import *
+from exceptions import ExchangeAPIException
 
 class BittrexWrapper:
     def __init__(self, api_key, api_secret):
@@ -25,6 +26,10 @@ class BittrexWrapper:
             self._add_currency(market_currency, market['MarketCurrencyLong'])
             self._add_currency(base_currency, market['BaseCurrencyLong'])
 
+    def _check_result(self, result):
+        if not result['success']:
+            raise ExchangeAPIException(result['message'])
+
     def get_base_currencies(self):
         return [self._currencies[x] for x in self._markets.keys()]
 
@@ -36,12 +41,14 @@ class BittrexWrapper:
     def get_market_state(self, base_currency_code, market_currency_code):
         market_name = self._make_market_name(base_currency_code, market_currency_code)
         result = self._handle.get_ticker(market_name)
+        self._check_result(result)
         data = result['result']
         return MarketState(data['Ask'], data['Bid'], data['Last'])
 
     def get_orderbook(self, base_currency_code, market_currency_code):
         market_name = self._make_market_name(base_currency_code, market_currency_code)
         result = self._handle.get_orderbook(market_name)
+        self._check_result(result)
         data = result['result']
         buy_orderbook = Orderbook()
         sell_orderbook = Orderbook()
@@ -53,6 +60,7 @@ class BittrexWrapper:
 
     def get_wallets(self):
         result = self._handle.get_balances()
+        self._check_result(result)
         output = []
         for data in result['result']:
             currency = data['Currency']
@@ -71,6 +79,7 @@ class BittrexWrapper:
 
     def get_wallet(self, currency_code):
         result = self._handle.get_balance(currency_code)
+        self._check_result(result)
         data = result['result']
         return Wallet(
             self._currencies[currency_code],

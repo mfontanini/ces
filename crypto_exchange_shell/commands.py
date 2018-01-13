@@ -1,7 +1,11 @@
 import utils
 from terminaltables import AsciiTable
+from exceptions import *
 
 class BaseCommand:
+    def __init__(self, name):
+        self.name = name
+
     def usage(self):
         pass
 
@@ -22,8 +26,16 @@ class BaseCommand:
         else:
             return []
 
+    def ensure_parameter_count(self, params, expected):
+        if len(params) != expected:
+            raise ParameterCountException(self.name, expected)
+
 class MarketStateCommand(BaseCommand):
+    def __init__(self):
+        BaseCommand.__init__(self, 'market')
+
     def execute(self, core, params):
+        self.ensure_parameter_count(params, 2)
         base_currency_code = params[0]
         market_currency_code = params[1]
         price = core.price_db.get_currency_price(base_currency_code)
@@ -45,6 +57,9 @@ class OrderbookCommand(BaseCommand):
     MAX_LINES = 10
     BASE_ROW_FORMAT = '{{:<{0}}} | {{:<{1}}}'
 
+    def __init__(self):
+        BaseCommand.__init__(self, 'orderbook')
+
     def _make_columns(self, order, currency_code, price):
         return [
             utils.make_price_string(order.rate, currency_code, price),
@@ -52,6 +67,7 @@ class OrderbookCommand(BaseCommand):
         ]
 
     def execute(self, core, params):
+        self.ensure_parameter_count(params, 2)
         base_code = params[0]
         price = core.price_db.get_currency_price(base_code)
         (buy_orderbook, sell_orderbook) = core.exchange_handle.get_orderbook(
@@ -73,7 +89,11 @@ class OrderbookCommand(BaseCommand):
         return self.generate_markets_parameters(core, current_parameters)
 
 class WalletsCommand(BaseCommand):
+    def __init__(self):
+        BaseCommand.__init__(self, 'wallets')
+
     def execute(self, core, params):
+        self.ensure_parameter_count(params, 0)
         wallets = core.exchange_handle.get_wallets()
         data = [['Currency', 'Available balance', 'Pending']]
         for wallet in sorted(wallets, reverse=True, key=lambda i: i.balance):
@@ -86,14 +106,18 @@ class WalletsCommand(BaseCommand):
                 utils.make_price_string(wallet.available, wallet.currency.code, price),
                 utils.make_price_string(wallet.pending, wallet.currency.code, price),
             ])
-        table = AsciiTable(data, 'Wawllets')
+        table = AsciiTable(data, 'wallets')
         print table.table
 
     def generate_parameters(self, core, current_parameters):
         return []
 
 class WalletCommand(BaseCommand):
+    def __init__(self):
+        BaseCommand.__init__(self, 'wallet')
+
     def execute(self, core, params):
+        self.ensure_parameter_count(params, 1)
         currency_code = params[0]
         price = core.price_db.get_currency_price(currency_code)
         wallet = core.exchange_handle.get_wallet(currency_code)
@@ -116,7 +140,7 @@ class WalletCommand(BaseCommand):
 class CommandManager:
     def __init__(self):
         self._commands = {
-            'state' : MarketStateCommand(),
+            'market' : MarketStateCommand(),
             'orderbook' : OrderbookCommand(),
             'wallets' : WalletsCommand(),
             'wallet' : WalletCommand(),
@@ -127,7 +151,7 @@ class CommandManager:
 
     def execute(self, handle, command, parameters):
         if command not in self._commands:
-            raise Exception('Unknown command {0}'.format(command))
+            raise UnknownCommandException(command)
         self._commands[command].execute(handle, parameters)    
 
     def get_command_names(self):

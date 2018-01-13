@@ -1,11 +1,5 @@
 import yaml
-
-class ConfigException(Exception):
-    pass
-
-class KeyMissingConfigException(ConfigException):
-    def __init__(self, missing):
-        ConfigException.__init__(self, '"{0}" key not found in config file')
+from exceptions import KeyMissingConfigException
 
 class ConfigManager:
     def __init__(self):
