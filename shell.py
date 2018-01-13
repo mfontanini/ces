@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import signal
+import signal, traceback
 from crypto_exchange_shell.bittrex_wrapper import BittrexWrapper
 from crypto_exchange_shell.commands import CommandManager
 from crypto_exchange_shell.shell_completer import ShellCompleter
@@ -32,4 +32,5 @@ while running:
         cmd_manager.execute(core, tokens[0], tokens[1:])
     except Exception as ex:
         print 'Error: {0}'.format(ex)
+        traceback.print_exc()
 price_db.stop()

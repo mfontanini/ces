@@ -38,3 +38,15 @@ class BittrexWrapper:
         result = self._handle.get_ticker(market_name)
         data = result['result']
         return MarketState(data['Ask'], data['Bid'], data['Last'])
+
+    def get_orderbook(self, base_currency_code, market_currency_code):
+        market_name = self._make_market_name(base_currency_code, market_currency_code)
+        result = self._handle.get_orderbook(market_name)
+        data = result['result']
+        buy_orderbook = Orderbook()
+        sell_orderbook = Orderbook()
+        for item in data['buy']:
+            buy_orderbook.add_order(Order(item['Rate'], item['Quantity']))
+        for item in data['sell']:
+            sell_orderbook.add_order(Order(item['Rate'], item['Quantity']))
+        return (buy_orderbook, sell_orderbook)
