@@ -24,12 +24,19 @@ class BaseCommand:
 
 class MarketStateCommand(BaseCommand):
     def execute(self, core, params):
-        price = core.price_db.get_currency_price(params[0])
-        result = core.exchange_handle.get_market_state(params[0], params[1])
-        make_price = lambda i: utils.make_price_string(i, params[0], price)
-        print '''Ask:  {0}
-Bid:  {1}
-Last: {2}'''.format(make_price(result.ask), make_price(result.bid), make_price(result.last))
+        base_currency_code = params[0]
+        market_currency_code = params[1]
+        price = core.price_db.get_currency_price(base_currency_code)
+        result = core.exchange_handle.get_market_state(base_currency_code, market_currency_code)
+        make_price = lambda i: utils.make_price_string(i, base_currency_code, price)
+        data = [
+            ['Ask', make_price(result.ask)],
+            ['Bid', make_price(result.bid)],
+            ['Last', make_price(result.last)]
+        ]
+        table = AsciiTable(data, '{0}/{1} market'.format(base_currency_code, market_currency_code))
+        table.inner_heading_row_border = False
+        print table.table
 
     def generate_parameters(self, core, current_parameters):
         return self.generate_markets_parameters(core, current_parameters)
@@ -65,21 +72,40 @@ class OrderbookCommand(BaseCommand):
     def generate_parameters(self, core, current_parameters):
         return self.generate_markets_parameters(core, current_parameters)
 
-class BalancesCommand(BaseCommand):
+class WalletsCommand(BaseCommand):
     def execute(self, core, params):
-        balances = core.exchange_handle.get_balances()
+        wallets = core.exchange_handle.get_wallets()
         data = [['Currency', 'Available balance', 'Pending']]
-        for balance in sorted(balances, reverse=True, key=lambda i: i.balance):
+        for wallet in sorted(wallets, reverse=True, key=lambda i: i.balance):
             # Stop once we reach 0 balances
-            if balance.balance == 0:
+            if wallet.balance == 0:
                 break
-            price = core.price_db.get_currency_price(balance.currency.code)
+            price = core.price_db.get_currency_price(wallet.currency.code)
             data.append([
-                balance.currency.code,
-                utils.make_price_string(balance.available, balance.currency.code, price),
-                utils.make_price_string(balance.pending, balance.currency.code, price),
+                wallet.currency.code,
+                utils.make_price_string(wallet.available, wallet.currency.code, price),
+                utils.make_price_string(wallet.pending, wallet.currency.code, price),
             ])
-        table = AsciiTable(data, 'Balances')
+        table = AsciiTable(data, 'Wawllets')
+        print table.table
+
+    def generate_parameters(self, core, current_parameters):
+        return []
+
+class WalletCommand(BaseCommand):
+    def execute(self, core, params):
+        currency_code = params[0]
+        price = core.price_db.get_currency_price(currency_code)
+        wallet = core.exchange_handle.get_wallet(currency_code)
+        make_price = lambda i: utils.make_price_string(i, currency_code, price)
+        address = wallet.address if wallet.address else '<no address>'
+        data = [
+            ['Available balance', make_price(wallet.available)],
+            ['Pending balance', make_price(wallet.pending)],
+            ['Address', address]
+        ]
+        table = AsciiTable(data, '{0} wallet'.format(currency_code))
+        table.inner_heading_row_border = False
         print table.table
 
     def generate_parameters(self, core, current_parameters):
@@ -92,7 +118,8 @@ class CommandManager:
         self._commands = {
             'state' : MarketStateCommand(),
             'orderbook' : OrderbookCommand(),
-            'balances' : BalancesCommand()
+            'wallets' : WalletsCommand(),
+            'wallet' : WalletCommand(),
         }
 
     def add_command(self, name, command):

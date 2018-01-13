@@ -51,7 +51,7 @@ class BittrexWrapper:
             sell_orderbook.add_order(Order(item['Rate'], item['Quantity']))
         return (buy_orderbook, sell_orderbook)
 
-    def get_balances(self):
+    def get_wallets(self):
         result = self._handle.get_balances()
         output = []
         for data in result['result']:
@@ -59,7 +59,7 @@ class BittrexWrapper:
             # Shouldn't happen. TODO: log this
             if currency not in self._currencies:
                 continue
-            balance = Balance(
+            balance = Wallet(
                 self._currencies[currency],
                 data['Balance'],
                 data['Available'],
@@ -68,3 +68,14 @@ class BittrexWrapper:
             )
             output.append(balance)
         return output
+
+    def get_wallet(self, currency_code):
+        result = self._handle.get_balance(currency_code)
+        data = result['result']
+        return Wallet(
+            self._currencies[currency_code],
+            data['Balance'],
+            data['Available'],
+            data['Pending'],
+            data['CryptoAddress']
+        )
