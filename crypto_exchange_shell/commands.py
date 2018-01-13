@@ -1,3 +1,5 @@
+import utils
+
 class BaseCommand:
     def usage(self):
         pass
@@ -7,11 +9,14 @@ class BaseCommand:
 
 class MarketStateCommand(BaseCommand):
     def execute(self, core, params):
+        # TODO: error checking
+        price = core.price_db.get_currency_price(params[0])
+        make_price = lambda i: utils.make_price_string(result.ask, params[0], price)
         result = core.exchange_handle.get_market_state(params[0], params[1])
         print '''Ask:  {0}
 Bid:  {1}
 Last: {2}
-'''.format(result.ask, result.bid, result.last)
+'''.format(make_price(result.ask), make_price(result.bid), make_price(result.last))
 
     def generate_parameters(self, core, current_parameters):
         base_currency_codes = map(lambda i: i.code, core.exchange_handle.get_base_currencies())
