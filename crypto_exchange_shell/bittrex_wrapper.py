@@ -50,3 +50,21 @@ class BittrexWrapper:
         for item in data['sell']:
             sell_orderbook.add_order(Order(item['Rate'], item['Quantity']))
         return (buy_orderbook, sell_orderbook)
+
+    def get_balances(self):
+        result = self._handle.get_balances()
+        output = []
+        for data in result['result']:
+            currency = data['Currency']
+            # Shouldn't happen. TODO: log this
+            if currency not in self._currencies:
+                continue
+            balance = Balance(
+                self._currencies[currency],
+                data['Balance'],
+                data['Available'],
+                data['Pending'],
+                data['CryptoAddress']
+            )
+            output.append(balance)
+        return output

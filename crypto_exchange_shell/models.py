@@ -32,3 +32,10 @@ class Orderbook:
     def add_order(self, order):
         self.orders.append(order)
 
+class Balance:
+    def __init__(self, currency, balance, available, pending, address):
+        self.currency = currency
+        self.balance = balance
+        self.available = available
+        self.pending = pending
+        self.address = address
