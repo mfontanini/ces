@@ -1,3 +1,5 @@
+from enum import Enum
+
 class Currency:
     def __init__(self, code, name, min_confirmations):
         self.code = code
@@ -49,3 +51,25 @@ class Transfer:
         self.confirmations = confirmations
         self.cost = cost
         self.cancelled = cancelled
+
+OrderType = Enum('OrderType', 'limit_sell limit_buy')
+
+class Order:
+    ORDER_TYPE_TO_STRING = {
+        OrderType.limit_sell : 'limit sell',
+        OrderType.limit_buy : 'limit buy',
+    }
+
+    def __init__(self, order_id, base_currency, market_currency, date_open, date_closed, amount,
+                 remaining, limit, price_per_unit, order_type):
+        self.order_id = order_id
+        self.base_currency = base_currency
+        self.market_currency = market_currency
+        self.date_open = date_open
+        self.date_closed = date_closed
+        self.amount = amount
+        self.remaining = remaining
+        self.limit = limit
+        self.price_per_unit = price_per_unit
+        self.order_type = order_type
+        self.order_type_string = Order.ORDER_TYPE_TO_STRING[order_type]

@@ -1,5 +1,8 @@
 from terminaltables import AsciiTable
 from terminaltables.width_and_alignment import max_dimensions
+import datetime
+import dateparser
+from dateutil.tz import tzutc, tzlocal
 
 def make_price_string(base_currency_price, base_currency_code, currency_price):
     return '{0:.8f} {1} (${2})'.format(
@@ -13,3 +16,6 @@ def make_table_rows(title, table_data):
     dimensions = max_dimensions(table.table_data, table.padding_left, table.padding_right)[:3]
     output = table.gen_table(*dimensions)
     return map(lambda i: ''.join(i), list(output))
+
+def datetime_from_utc_time(str_time):
+    return dateparser.parse(str_time).replace(tzinfo=tzutc()).astimezone(tz=tzlocal())

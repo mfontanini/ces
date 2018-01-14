@@ -30,6 +30,9 @@ class BaseCommand:
         if len(params) != expected:
             raise ParameterCountException(self.name, expected)
 
+    def format_date(self, datetime):
+        return datetime.strftime("%Y-%m-%d %H:%M:%S")
+
 class MarketStateCommand(BaseCommand):
     def __init__(self):
         BaseCommand.__init__(self, 'market')
@@ -179,6 +182,46 @@ class WithdrawalsCommand(BaseCommand):
     def generate_parameters(self, core, current_parameters):
         return []
 
+class OrdersCommand(BaseCommand):
+    def __init__(self):
+        BaseCommand.__init__(self, 'orders')
+
+    def execute(self, core, params):
+        self.ensure_parameter_count(params, 1)
+        order_type = params[0]
+        if order_type == 'open':
+            data = [['Id', 'Exchange', 'Date', 'Type', 'Bid/Ask', 'Amount (filled/total)']]
+            for order in core.exchange_handle.get_open_orders():
+                data.append([
+                    order.order_id,
+                    '{0}/{1}'.format(order.base_currency.code, order.market_currency.code),
+                    self.format_date(order.date_open),
+                    order.order_type_string,
+                    '{0} {1}'.format(order.limit, order.base_currency.code),
+                    '{0}/{1}'.format(order.amount - order.remaining, order.amount)
+                ])
+            title = 'Open orders'
+        elif order_type == 'completed':
+            data = [['Exchange', 'Date', 'Type', 'Price', 'Amount (filled/total)']]
+            for order in core.exchange_handle.get_order_history():
+                data.append([
+                    '{0}/{1}'.format(order.base_currency.code, order.market_currency.code),
+                    self.format_date(order.date_closed),
+                    order.order_type_string,
+                    '{0} {1}'.format(order.price_per_unit, order.base_currency.code),
+                    '{0}/{1}'.format(order.amount - order.remaining, order.amount)
+                ])
+            title = 'Completed orders'
+        else:
+            raise CommandExecutionException('Invalid order type "{0}"'.format(order_type))
+        table = AsciiTable(data, title)
+        print table.table
+
+    def generate_parameters(self, core, current_parameters):
+        if len(current_parameters) == 0:
+            return ['open', 'completed']
+        return []
+
 class CommandManager:
     def __init__(self):
         self._commands = {
@@ -188,6 +231,7 @@ class CommandManager:
             'wallet' : WalletCommand(),
             'deposits' : DepositsCommand(),
             'withdrawals' : WithdrawalsCommand(),
+            'orders' : OrdersCommand(),
         }
 
     def add_command(self, name, command):

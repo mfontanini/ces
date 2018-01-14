@@ -1,8 +1,14 @@
 from bittrex.bittrex import *
 from models import *
 from exceptions import ExchangeAPIException
+import utils
 
 class BittrexWrapper:
+    ORDER_TYPE_MAPPINGS = {
+        'LIMIT_SELL' : OrderType.limit_sell,
+        'LIMIT_BUY' : OrderType.limit_buy,
+    }
+
     def __init__(self, api_key, api_secret):
         self._handle = Bittrex(api_key, api_secret)
         self._markets = {}
@@ -145,4 +151,50 @@ class BittrexWrapper:
                     data['Currency'],
                     ex
                 )
+        return output
+
+    def get_open_orders(self):
+        result = self._handle.get_open_orders()
+        self._check_result(result)
+        output = []
+        for data in result['result']:
+            base_currency, market_currency = data['Exchange'].split('-')
+            # TODO: log this
+            if base_currency not in self._currencies or market_currency not in self._currencies:
+                continue
+            output.append(Order(
+                data['OrderUuid'],
+                self._currencies[base_currency],
+                self._currencies[market_currency],
+                utils.datetime_from_utc_time(data['Opened']),
+                None, # Date closed
+                data['Quantity'],
+                data['QuantityRemaining'],
+                data['Limit'],
+                None, # Price per unit
+                BittrexWrapper.ORDER_TYPE_MAPPINGS[data['OrderType']]
+            ))
+        return output
+
+    def get_order_history(self):
+        result = self._handle.get_order_history()
+        self._check_result(result)
+        output = []
+        for data in result['result']:
+            base_currency, market_currency = data['Exchange'].split('-')
+            # TODO: log this
+            if base_currency not in self._currencies or market_currency not in self._currencies:
+                continue
+            output.append(Order(
+                data['OrderUuid'],
+                self._currencies[base_currency],
+                self._currencies[market_currency],
+                None, # Date open
+                utils.datetime_from_utc_time(data['TimeStamp']),
+                data['Quantity'],
+                data['QuantityRemaining'],
+                data['Limit'],
+                data['PricePerUnit'],
+                BittrexWrapper.ORDER_TYPE_MAPPINGS[data['OrderType']]
+            ))
         return output
