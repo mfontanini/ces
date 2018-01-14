@@ -41,10 +41,11 @@ class Wallet:
         self.pending = pending
         self.address = address
 
-class Deposit:
-    def __init__(self, currency, amount, address, transaction_id, confirmations):
+class Transfer:
+    def __init__(self, currency, amount, transaction_id, confirmations, cost, cancelled):
         self.currency = currency
         self.amount = amount
-        self.address = address
         self.transaction_id = transaction_id
         self.confirmations = confirmations
+        self.cost = cost
+        self.cancelled = cancelled

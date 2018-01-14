@@ -156,6 +156,29 @@ class DepositsCommand(BaseCommand):
     def generate_parameters(self, core, current_parameters):
         return []
 
+class WithdrawalsCommand(BaseCommand):
+    def __init__(self):
+        BaseCommand.__init__(self, 'withdrawals')
+
+    def execute(self, core, params):
+        self.ensure_parameter_count(params, 0)
+        data = [['Amount', 'Transaction id', 'Cost']]
+        for withdrawal in core.exchange_handle.get_withdrawal_history():
+            if withdrawal.cancelled:
+                cost = '0 (cancelled)'
+            else:
+                cost = '{0} {1}'.format(withdrawal.cost, withdrawal.currency.code)
+            data.append([
+                '{0} {1}'.format(withdrawal.amount, withdrawal.currency.code),
+                withdrawal.transaction_id,
+                cost
+            ])
+        table = AsciiTable(data, 'Withdrawals')
+        print table.table
+
+    def generate_parameters(self, core, current_parameters):
+        return []
+
 class CommandManager:
     def __init__(self):
         self._commands = {
@@ -164,6 +187,7 @@ class CommandManager:
             'wallets' : WalletsCommand(),
             'wallet' : WalletCommand(),
             'deposits' : DepositsCommand(),
+            'withdrawals' : WithdrawalsCommand(),
         }
 
     def add_command(self, name, command):

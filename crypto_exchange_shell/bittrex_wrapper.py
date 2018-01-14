@@ -106,16 +106,42 @@ class BittrexWrapper:
             if data['Currency'] not in self._currencies:
                 continue
             try:
-                deposit = Deposit(
+                deposit = Transfer(
                     self._currencies[data['Currency']],
                     data['Amount'],
-                    data['CryptoAddress'],
                     data['TxId'],
-                    data.get('Confirmations', 0)
+                    data.get('Confirmations', 0),
+                    0, # Cost,
+                    False, # Cancelled
                 )
                 output.append(deposit)
             except Exception as ex:
                 print 'Failed to parse deposit for currency "{0}": {1}'.format(
+                    data['Currency'],
+                    ex
+                )
+        return output
+
+    def get_withdrawal_history(self):
+        result = self._handle.get_withdrawal_history()
+        self._check_result(result)
+        output = []
+        for data in result['result']:
+            # TODO: log this
+            if data['Currency'] not in self._currencies:
+                continue
+            try:
+                deposit = Transfer(
+                    self._currencies[data['Currency']],
+                    data['Amount'],
+                    data['TxId'],
+                    data.get('Confirmations', 0),
+                    data['TxCost'],
+                    data['Canceled']
+                )
+                output.append(deposit)
+            except Exception as ex:
+                print 'Failed to parse withdrawal for currency "{0}": {1}'.format(
                     data['Currency'],
                     ex
                 )
