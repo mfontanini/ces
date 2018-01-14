@@ -222,6 +222,21 @@ class OrdersCommand(BaseCommand):
             return ['open', 'completed']
         return []
 
+class CancelOrderCommand(BaseCommand):
+    def __init__(self):
+        BaseCommand.__init__(self, 'cancel')
+
+    def execute(self, core, params):
+        self.ensure_parameter_count(params, 1)
+        order_id = params[0]
+        core.exchange_handle.cancel_order(order_id)
+        print 'Successfully cancelled order {0}'.format(order_id)
+
+    def generate_parameters(self, core, current_parameters):
+        if len(current_parameters) == 0:
+            return map(lambda i: i.order_id, core.exchange_handle.get_open_orders())
+        return []
+
 class CommandManager:
     def __init__(self):
         self._commands = {
@@ -232,6 +247,7 @@ class CommandManager:
             'deposits' : DepositsCommand(),
             'withdrawals' : WithdrawalsCommand(),
             'orders' : OrdersCommand(),
+            'cancel' : CancelOrderCommand(),
         }
 
     def add_command(self, name, command):

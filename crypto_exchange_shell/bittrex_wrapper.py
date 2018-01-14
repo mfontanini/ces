@@ -198,3 +198,7 @@ class BittrexWrapper:
                 BittrexWrapper.ORDER_TYPE_MAPPINGS[data['OrderType']]
             ))
         return output
+
+    def cancel_order(self, order_id):
+        result = self._handle.cancel(order_id)
+        self._check_result(result)
