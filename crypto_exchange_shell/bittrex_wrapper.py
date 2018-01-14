@@ -15,7 +15,7 @@ class BittrexWrapper:
         self._currencies = {}
         self._load_markets()
 
-    def _make_market_name(self, base_currency_code, market_currency_code):
+    def _make_exchange_name(self, base_currency_code, market_currency_code):
         return '{0}-{1}'.format(base_currency_code, market_currency_code)
 
     def _load_currencies(self):
@@ -53,15 +53,15 @@ class BittrexWrapper:
         return [self._currencies[x] for x in self._markets[base_currency_code]]
 
     def get_market_state(self, base_currency_code, market_currency_code):
-        market_name = self._make_market_name(base_currency_code, market_currency_code)
-        result = self._handle.get_ticker(market_name)
+        exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
+        result = self._handle.get_ticker(exchange_name)
         self._check_result(result)
         data = result['result']
         return MarketState(data['Ask'], data['Bid'], data['Last'])
 
     def get_orderbook(self, base_currency_code, market_currency_code):
-        market_name = self._make_market_name(base_currency_code, market_currency_code)
-        result = self._handle.get_orderbook(market_name)
+        exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
+        result = self._handle.get_orderbook(exchange_name)
         self._check_result(result)
         data = result['result']
         buy_orderbook = Orderbook()
@@ -202,3 +202,15 @@ class BittrexWrapper:
     def cancel_order(self, order_id):
         result = self._handle.cancel(order_id)
         self._check_result(result)
+
+    def buy(self, base_currency_code, market_currency_code, amount, rate):
+        exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
+        result = self._handle.buy_limit(exchange_name, amount, rate)
+        self._check_result(result)
+        return result['result']['uuid']
+
+    def sell(self, base_currency_code, market_currency_code, amount, rate):
+        exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
+        result = self._handle.sell_limit(exchange_name, amount, rate)
+        self._check_result(result)
+        return result['result']['uuid']

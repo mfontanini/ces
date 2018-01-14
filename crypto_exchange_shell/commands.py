@@ -237,6 +237,96 @@ class CancelOrderCommand(BaseCommand):
             return map(lambda i: i.order_id, core.exchange_handle.get_open_orders())
         return []
 
+class SellCommand(BaseCommand):
+    def __init__(self):
+        BaseCommand.__init__(self, 'sell')
+
+    def execute(self, core, params):
+        self.ensure_parameter_count(params, 4)
+        base_currency_code = params[0]
+        market_currency_code = params[1]
+        amount = params[2]
+        rate = float(params[3])
+        wallet = core.exchange_handle.get_wallet(market_currency_code)
+        if amount == 'max':
+            amount = wallet.available
+        else:
+            amount = int(amount)
+        if amount > wallet.available:
+            print 'Wallet only contains {0} {1}'.format(wallet.available, market_currency_code)
+            return
+        price = core.price_db.get_currency_price(base_currency_code)
+        data = [
+            ['Exchange', 'Amount', 'Rate'],
+        ]
+        data.append([
+            '{0}/{1}'.format(base_currency_code, market_currency_code),
+            amount,
+            utils.make_price_string(rate, base_currency_code, price),
+        ])
+        table = AsciiTable(data, 'Sell operation')
+        print table.table
+        if utils.show_operation_dialog():
+            order_id = core.exchange_handle.sell(
+                base_currency_code,
+                market_currency_code,
+                amount,
+                rate
+            )
+            print 'Successfully posted order with id: {0}'.format(order_id)
+        else:
+            print 'Operation cancelled'
+
+    def generate_parameters(self, core, current_parameters):
+        if len(current_parameters) < 2:
+            return self.generate_markets_parameters(core, current_parameters)
+        return []
+
+class BuyCommand(BaseCommand):
+    def __init__(self):
+        BaseCommand.__init__(self, 'buy')
+
+    def execute(self, core, params):
+        self.ensure_parameter_count(params, 4)
+        base_currency_code = params[0]
+        market_currency_code = params[1]
+        amount = params[2]
+        rate = float(params[3])
+        wallet = core.exchange_handle.get_wallet(base_currency_code)
+        if amount == 'max':
+            amount = wallet.available
+        else:
+            amount = int(amount)
+        if amount > wallet.available:
+            print 'Wallet only contains {0} {1}'.format(wallet.available, base_currency_code)
+            return
+        price = core.price_db.get_currency_price(base_currency_code)
+        data = [
+            ['Exchange', 'Amount', 'Rate'],
+        ]
+        data.append([
+            '{0}/{1}'.format(base_currency_code, market_currency_code),
+            amount,
+            utils.make_price_string(rate, base_currency_code, price),
+        ])
+        table = AsciiTable(data, 'Buy operation')
+        print table.table
+        if utils.show_operation_dialog():
+            order_id = core.exchange_handle.sell(
+               base_currency_code,
+               market_currency_code,
+               amount,
+               rate
+            )
+            print 'Successfully posted order with id: {0}'.format(order_id)
+        else:
+            print 'Operation cancelled'
+
+    def generate_parameters(self, core, current_parameters):
+        if len(current_parameters) < 2:
+            return self.generate_markets_parameters(core, current_parameters)
+        return []
+
 class CommandManager:
     def __init__(self):
         self._commands = {
@@ -248,6 +338,8 @@ class CommandManager:
             'withdrawals' : WithdrawalsCommand(),
             'orders' : OrdersCommand(),
             'cancel' : CancelOrderCommand(),
+            'sell' : SellCommand(),
+            'buy' : BuyCommand(),
         }
 
     def add_command(self, name, command):
