@@ -9,22 +9,30 @@ class BittrexWrapper:
         self._currencies = {}
         self._load_markets()
 
-    def _add_currency(self, code, name):
-        self._currencies[code] = Currency(code, name)
-
     def _make_market_name(self, base_currency_code, market_currency_code):
         return '{0}-{1}'.format(base_currency_code, market_currency_code)
 
+    def _load_currencies(self):
+        result = self._handle.get_currencies()
+        self._check_result(result)
+        for data in result['result']:
+            code = data['Currency']
+            self._currencies[code] = Currency(
+                code,
+                data['CurrencyLong'],
+                data['MinConfirmation']
+            )
+
     def _load_markets(self):
+        self._load_currencies()
         result = self._handle.get_markets()
+        self._check_result(result)
         for market in result['result']:
             base_currency = market['BaseCurrency']
             market_currency = market['MarketCurrency']
             if base_currency not in self._markets:
                 self._markets[base_currency] = set()
             self._markets[base_currency].add(market_currency)
-            self._add_currency(market_currency, market['MarketCurrencyLong'])
-            self._add_currency(base_currency, market['BaseCurrencyLong'])
 
     def _check_result(self, result):
         if not result['success']:
@@ -88,3 +96,27 @@ class BittrexWrapper:
             data['Pending'],
             data['CryptoAddress']
         )
+
+    def get_deposit_history(self):
+        result = self._handle.get_deposit_history()
+        self._check_result(result)
+        output = []
+        for data in result['result']:
+            # TODO: log this
+            if data['Currency'] not in self._currencies:
+                continue
+            try:
+                deposit = Deposit(
+                    self._currencies[data['Currency']],
+                    data['Amount'],
+                    data['CryptoAddress'],
+                    data['TxId'],
+                    data.get('Confirmations', 0)
+                )
+                output.append(deposit)
+            except Exception as ex:
+                print 'Failed to parse deposit for currency "{0}": {1}'.format(
+                    data['Currency'],
+                    ex
+                )
+        return output

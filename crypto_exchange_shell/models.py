@@ -1,7 +1,8 @@
 class Currency:
-    def __init__(self, code, name):
+    def __init__(self, code, name, min_confirmations):
         self.code = code
         self.name = name
+        self.min_confirmations = min_confirmations
 
     def __repr__(self):
         return 'Currency({0})'.format(self.code)
@@ -39,3 +40,11 @@ class Wallet:
         self.available = available
         self.pending = pending
         self.address = address
+
+class Deposit:
+    def __init__(self, currency, amount, address, transaction_id, confirmations):
+        self.currency = currency
+        self.amount = amount
+        self.address = address
+        self.transaction_id = transaction_id
+        self.confirmations = confirmations

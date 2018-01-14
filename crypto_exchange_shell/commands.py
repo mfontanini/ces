@@ -137,6 +137,25 @@ class WalletCommand(BaseCommand):
             return map(lambda i: i.code, core.exchange_handle.get_base_currencies())
         return []
 
+class DepositsCommand(BaseCommand):
+    def __init__(self):
+        BaseCommand.__init__(self, 'deposits')
+
+    def execute(self, core, params):
+        self.ensure_parameter_count(params, 0)
+        data = [['Amount', 'Transaction id', 'Confirmations']]
+        for deposit in core.exchange_handle.get_deposit_history():
+            data.append([
+                '{0} {1}'.format(deposit.amount, deposit.currency.code),
+                deposit.transaction_id,
+                '{0}/{1}'.format(deposit.confirmations, deposit.currency.min_confirmations)
+            ])
+        table = AsciiTable(data, 'Deposits')
+        print table.table
+
+    def generate_parameters(self, core, current_parameters):
+        return []
+
 class CommandManager:
     def __init__(self):
         self._commands = {
@@ -144,6 +163,7 @@ class CommandManager:
             'orderbook' : OrderbookCommand(),
             'wallets' : WalletsCommand(),
             'wallet' : WalletCommand(),
+            'deposits' : DepositsCommand(),
         }
 
     def add_command(self, name, command):
