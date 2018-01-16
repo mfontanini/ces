@@ -57,7 +57,7 @@ class ShellCompleter:
 
     def _generate_parameters(self, text, state):
         if state == 0:
-            line = readline.get_line_buffer()
+            line = readline.get_line_buffer().strip()
             tokens = line[:readline.get_endidx()].split(' ')
             try:
                 command = self._core.cmd_manager.get_command(tokens[0])

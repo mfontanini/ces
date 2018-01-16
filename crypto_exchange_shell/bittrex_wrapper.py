@@ -53,7 +53,8 @@ class BittrexWrapper:
             self._currencies[code] = Currency(
                 code,
                 data['CurrencyLong'],
-                data['MinConfirmation']
+                data['MinConfirmation'],
+                data['TxFee']
             )
 
     def _load_markets(self):
@@ -74,9 +75,17 @@ class BittrexWrapper:
     def get_base_currencies(self):
         return [self._currencies[x] for x in self._markets.keys()]
 
+    def get_currency(self, currency_code):
+        if currency_code not in self._currencies:
+            raise InvalidArgumentException('Invalid currency {0}'.format(currency_code))
+        return self._currencies[currency_code]
+
+    def get_currencies(self):
+        return self._currencies.values()
+
     def get_markets(self, base_currency_code):
         if base_currency_code not in self._markets:
-            raise Exception('Invalid base currency {0}'.format(base_currency_code))
+            raise InvalidArgumentException('Invalid base currency {0}'.format(base_currency_code))
         return [self._currencies[x] for x in self._markets[base_currency_code]]
 
     def get_market_state(self, base_currency_code, market_currency_code):
@@ -189,7 +198,7 @@ class BittrexWrapper:
             # TODO: log this
             if base_currency not in self._currencies or market_currency not in self._currencies:
                 continue
-            output.append(Order(
+            output.append(TradeOrder(
                 data['OrderUuid'],
                 self._currencies[base_currency],
                 self._currencies[market_currency],
@@ -212,7 +221,7 @@ class BittrexWrapper:
             # TODO: log this
             if base_currency not in self._currencies or market_currency not in self._currencies:
                 continue
-            output.append(Order(
+            output.append(TradeOrder(
                 data['OrderUuid'],
                 self._currencies[base_currency],
                 self._currencies[market_currency],
@@ -239,5 +248,22 @@ class BittrexWrapper:
     def sell(self, base_currency_code, market_currency_code, amount, rate):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
         result = self._handle.sell_limit(exchange_name, amount, rate)
+        self._check_result(result)
+        return result['result']['uuid']
+
+    def withdraw(self, currency, amount, address, address_tag):
+        params = {
+            'currency': currency,
+            'quantity': amount,
+            'address': address,
+        }
+        if address_tag is not None:
+            params['paymentid'] = address_tag
+        # The current API doesn't include the address tag
+        result = self._handle._api_query(
+            path_dict={ API_V1_1: '/account/withdraw' },
+            options=params,
+            protection=PROTECTION_PRV
+        )
         self._check_result(result)
         return result['result']['uuid']

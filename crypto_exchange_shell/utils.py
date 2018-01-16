@@ -32,11 +32,15 @@ import dateparser
 import sys
 from dateutil.tz import tzutc, tzlocal
 
+def format_float(number_format, number):
+    # Format it, then remove right zeroes and remove dot if all decimals are gone
+    return number_format.format(number).rstrip('0').rstrip('.')
+
 def make_price_string(base_currency_price, base_currency_code, currency_price):
-    return '{0:.8f} {1} (${2})'.format(
-        base_currency_price,
+    return '{0} {1} (${2})'.format(
+        format_float('{0:.8f}', base_currency_price),
         base_currency_code,
-        currency_price * base_currency_price
+        format_float('{0:.4f}', currency_price * base_currency_price)
     )
 
 def make_table_rows(title, table_data):

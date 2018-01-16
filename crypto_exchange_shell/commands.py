@@ -30,8 +30,9 @@ from terminaltables import AsciiTable
 from exceptions import *
 
 class BaseCommand:
-    def __init__(self, name):
+    def __init__(self, name, parse_args=True):
         self.name = name
+        self.parse_args = parse_args
 
     def usage(self):
         pass
@@ -93,7 +94,7 @@ class OrderbookCommand(BaseCommand):
     def _make_columns(self, order, currency_code, price):
         return [
             utils.make_price_string(order.rate, currency_code, price),
-            str(order.quantity)
+            '{0:.2f}'.format(order.quantity)
         ]
 
     def execute(self, core, params):
@@ -354,6 +355,75 @@ class BuyCommand(BaseCommand):
             return self.generate_markets_parameters(core, current_parameters)
         return []
 
+class WithdrawCommand(BaseCommand):
+    ADDRESS_TAG_NAME = {
+        'XLM' : 'Memo text',
+        'XMR' : 'Payment id',
+        'NXT' : 'Message',
+    }
+
+    def __init__(self):
+        # For the memo/payment id we don't want parsing, we'll handle that ourselves
+        BaseCommand.__init__(self, 'withdraw', parse_args=False)
+
+    def execute(self, core, raw_params):
+        split_params = filter(lambda i: len(i) > 0, raw_params.strip().split(' '))
+        if len(split_params) < 3:
+            raise ParameterCountException(self.name, 3)
+        currency = core.exchange_handle.get_currency(split_params[0])
+        amount = split_params[1]
+        wallet = core.exchange_handle.get_wallet(currency.code)
+        if amount == 'max':
+            amount = wallet.available - currency.withdraw_fee
+        else:
+            amount = float(amount)
+            if wallet.balance <= amount:
+                print 'Wallet only contains {0} {1} (withdraw fee is {2})'.format(
+                    wallet.available,
+                    currency.code,
+                    currency.withdraw_fee
+                )
+                return
+        address = split_params[2]
+        address_tag = None
+        # Find the address and use the rest of the string (if any) as the address tag.
+        # The address tag is the payment id/memo depending on the currency being used
+        index = raw_params.find(address) + len(address)
+        rest = raw_params[index:].strip()
+        if len(rest) > 0:
+            address_tag = rest
+        data = [
+            ['Currency', 'Amount', 'Tx fee', 'Address']
+        ]
+        price = core.price_db.get_currency_price(currency.code)
+        data.append([
+            currency.code,
+            utils.make_price_string(amount, currency.code, price),
+            utils.make_price_string(currency.withdraw_fee, currency.code, price),
+            address
+        ])
+        if address_tag is not None:
+            # Try to get our more specific namings if we have them
+            data[0].append(WithdrawCommand.ADDRESS_TAG_NAME.get(currency.code, 'Address tag'))
+            data[1].append(address_tag)
+        table = AsciiTable(data, 'Withdrawal')
+        print table.table
+        if utils.show_operation_dialog():
+            withdraw_id = core.exchange_handle.withdraw(
+                currency.code,
+                amount,
+                address,
+                address_tag
+            )
+            print 'Successfully posted withdraw order with id {0}'.format(withdraw_id)
+        else:
+            print 'Operation cancelled'
+
+    def generate_parameters(self, core, current_parameters):
+        if len(current_parameters) == 0:
+            return map(lambda i: i.code, core.exchange_handle.get_currencies())
+        return []
+
 class CommandManager:
     def __init__(self):
         self._commands = {
@@ -367,6 +437,7 @@ class CommandManager:
             'cancel' : CancelOrderCommand(),
             'sell' : SellCommand(),
             'buy' : BuyCommand(),
+            'withdraw' : WithdrawCommand(),
         }
 
     def add_command(self, name, command):

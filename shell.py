@@ -65,7 +65,12 @@ while running:
     tokens = line.strip().split(' ')
     tokens = filter(lambda i: len(i) > 0, tokens)
     try:
-        cmd_manager.execute(core, tokens[0], tokens[1:])
+        command = cmd_manager.get_command(tokens[0])
+        if command.parse_args:
+            params = tokens[1:]
+        else:
+            params = line.strip()[len(tokens[0]):].strip()
+        cmd_manager.execute(core, tokens[0], params)
     except ExchangeAPIException as ex:
         print 'Error calling API: {0}'.format(ex)
     except UnknownCommandException as ex:

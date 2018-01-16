@@ -43,6 +43,9 @@ class UnknownCurrencyException(BaseException):
 class ExchangeAPIException(BaseException):
     pass
 
+class InvalidArgumentException(BaseException):
+    pass
+
 class CommandExecutionException(BaseException):
     pass
 
