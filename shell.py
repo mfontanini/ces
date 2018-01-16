@@ -74,9 +74,9 @@ while running:
     except ExchangeAPIException as ex:
         print 'Error calling API: {0}'.format(ex)
     except UnknownCommandException as ex:
-        print 'Unknown command: {0}'.format(ex.command)
+        print 'Unknown command "{0}"'.format(ex.command)
     except UnknownCurrencyException as ex:
-        print 'Unknown currency: {0}'.format(ex.currency_code)
+        print 'Unknown currency "{0}"'.format(ex.currency_code)
     except ParameterCountException as ex:
         print '"{0}" command expects {1} parameters'.format(ex.command, ex.expected)
     except CommandExecutionException as ex:

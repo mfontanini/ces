@@ -453,5 +453,5 @@ class CommandManager:
 
     def get_command(self, name):
         if name not in self._commands:
-            raise Exception('Command {0} does not exist'.format(name))
+            raise UnknownCommandException(name)
         return self._commands[name]
