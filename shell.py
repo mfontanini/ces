@@ -42,7 +42,7 @@ running = True
 
 config_manager = ConfigManager()
 try:
-    config_manager.load('configs/bittrex.cfg')
+    config_manager.load('configs/bittrex.yaml')
 except Exception as ex:
     print 'Error parsing config: {0}'.format(ex)
 
