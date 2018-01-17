@@ -30,6 +30,11 @@ from terminaltables.width_and_alignment import max_dimensions
 import datetime
 import dateparser
 import sys
+import hashlib
+import base64
+import getpass
+from Crypto.Cipher import AES
+from Crypto import Random
 from dateutil.tz import tzutc, tzlocal
 
 def format_float(number_format, number):
@@ -68,3 +73,25 @@ def show_operation_dialog():
         else:
             print 'Invalid response'
 
+def encrypt(data, passphrase):
+    key = hashlib.sha256(passphrase).digest()
+    iv = Random.new().read(AES.block_size)
+    encrypted = AES.new(key, AES.MODE_CFB, iv).encrypt(data)
+    return base64.b64encode(iv + encrypted)
+
+def decrypt(data, passphrase):
+    key = hashlib.sha256(passphrase).digest()
+    data = base64.b64decode(data)
+    iv = data[:AES.block_size]
+    data = data[AES.block_size:]
+    return AES.new(key, AES.MODE_CFB, iv).decrypt(data)
+
+def decrypt_file(path, passphrase):
+    data = open(path).read()
+    return decrypt(data, passphrase)
+
+def ask_for_passphrase(text):
+    try:
+        return getpass.getpass(text)
+    except (KeyboardInterrupt, EOFError):
+        return None
