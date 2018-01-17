@@ -27,7 +27,9 @@
 # of the authors and should not be interpreted as representing official policies,
 # either expressed or implied, of the FreeBSD Project.
 
-import signal, traceback
+import signal
+import traceback
+import argparse
 from crypto_exchange_shell.bittrex_wrapper import BittrexWrapper
 from crypto_exchange_shell.commands import CommandManager
 from crypto_exchange_shell.shell_completer import ShellCompleter
@@ -35,17 +37,42 @@ from crypto_exchange_shell.core import Core
 from crypto_exchange_shell.price_database import PriceDatabase
 from crypto_exchange_shell.config_manager import ConfigManager
 from crypto_exchange_shell.exceptions import *
+from crypto_exchange_shell.utils import ask_for_passphrase
 
-price_db = PriceDatabase()
-price_db.wait_for_data()
-running = True
+parser = argparse.ArgumentParser(description='Crypto exchange shell')
+parser.add_argument('-c', '--config', type=str, required=True,
+                    help='path to configuration file')
+parser.add_argument('-d', '--decrypt', action='store_true',
+                    help='decrypt the configuration file')
+
+try:
+    args = parser.parse_args()
+except Exception as ex:
+    print 'Error parsing arguments: {0}'.format(ex)
+    exit(1)
+
+if args.decrypt:
+    passphrase = ask_for_passphrase('Configuration file decryption passphrase: ')
+    if passphrase is None:
+        print 'Configuration file decryption passphrase is required'
+        exit(1)
 
 config_manager = ConfigManager()
 try:
-    config_manager.load('configs/bittrex.yaml')
+    if args.decrypt:
+        config_manager.load_encrypted(args.config, passphrase)
+    else:
+        config_manager.load(args.config)
 except Exception as ex:
     print 'Error parsing config: {0}'.format(ex)
+    exit(1)
 
+price_db = PriceDatabase()
+print 'Fetching latest crypto currency prices...'
+price_db.wait_for_data()
+running = True
+
+print 'Fetching data from exchange...'
 handle = BittrexWrapper(config_manager.api_key, config_manager.api_secret)
 cmd_manager = CommandManager()
 core = Core(handle, cmd_manager, price_db)

@@ -27,6 +27,7 @@
 
 import yaml
 from exceptions import KeyMissingConfigException
+from utils import decrypt_file
 
 class ConfigManager:
     def __init__(self):
@@ -36,10 +37,18 @@ class ConfigManager:
         if key not in config:
             raise KeyMissingConfigException(key)
 
-    def load(self, config_file):
-        config = yaml.safe_load(open(config_file))
+    def _process_config(self, config):
         self._ensure_key_is_present(config, 'exchange')
         self._ensure_key_is_present(config['exchange'], 'api_key')
         self._ensure_key_is_present(config['exchange'], 'api_secret')
         self.api_key = config['exchange']['api_key']
         self.api_secret = config['exchange']['api_secret']
+
+    def load(self, config_file):
+        config = yaml.safe_load(open(config_file))
+        self._process_config(config)
+
+    def load_encrypted(self, config_file, passphrase):
+        config = yaml.safe_load(decrypt_file(config_file, passphrase))
+        self._process_config(config)
+
