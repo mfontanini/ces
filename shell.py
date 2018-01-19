@@ -31,6 +31,7 @@ import signal
 import traceback
 import argparse
 from crypto_exchange_shell.bittrex_wrapper import BittrexWrapper
+from crypto_exchange_shell.binance_wrapper import BinanceWrapper
 from crypto_exchange_shell.commands import CommandManager
 from crypto_exchange_shell.shell_completer import ShellCompleter
 from crypto_exchange_shell.core import Core
@@ -73,7 +74,13 @@ price_db.wait_for_data()
 running = True
 
 print 'Fetching data from exchange...'
-handle = BittrexWrapper(config_manager.api_key, config_manager.api_secret)
+if config_manager.exchange_name == 'bittrex':
+    handle = BittrexWrapper(config_manager.api_key, config_manager.api_secret)
+elif config_manager.exchange_name == 'binance':
+    handle = BinanceWrapper(config_manager.api_key, config_manager.api_secret)
+else:
+    print 'Unkown exchange {0}'.format(config_manager.exchange_name)
+    exit(1)
 cmd_manager = CommandManager()
 core = Core(handle, cmd_manager, price_db)
 completer = ShellCompleter(core)

@@ -48,7 +48,6 @@ class BaseCommand:
         elif len(current_parameters) == 1:
             base_currency = current_parameters[0]
             if base_currency not in base_currency_codes:
-                print base_currency
                 return []
             return map(lambda i: i.code, core.exchange_handle.get_markets(base_currency))
         else:

@@ -41,8 +41,10 @@ class ConfigManager:
         self._ensure_key_is_present(config, 'exchange')
         self._ensure_key_is_present(config['exchange'], 'api_key')
         self._ensure_key_is_present(config['exchange'], 'api_secret')
+        self._ensure_key_is_present(config['exchange'], 'exchange_name')
         self.api_key = config['exchange']['api_key']
         self.api_secret = config['exchange']['api_secret']
+        self.exchange_name = config['exchange']['exchange_name']
 
     def load(self, config_file):
         config = yaml.safe_load(open(config_file))
