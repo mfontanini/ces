@@ -30,18 +30,20 @@ from terminaltables import AsciiTable
 from exceptions import *
 
 class BaseCommand:
-    def __init__(self, name, parse_args=True):
+    def __init__(self, name, usage_template, short_usage_string, parse_args=True):
         self.name = name
         self.parse_args = parse_args
+        self.usage_template = usage_template
+        self.short_usage_string = short_usage_string
 
     def usage(self):
-        output = self.USAGE_TEMPLATE_STRING.format(self.name)
+        output = self.usage_template.format(self.name)
         output = output.split('\n')
         output = [output[0]] + ['-' * len(output[0])] + output[1:]
         return '\n'.join(output)
 
     def short_usage(self):
-        return self.SHORT_USAGE_STRING
+        return self.short_usage_string
 
     def execute(self, core, params):
         pass
@@ -77,7 +79,7 @@ For example, print the state of the BTC/XLM market:
 market BTC XLM'''
 
     def __init__(self):
-        BaseCommand.__init__(self, 'market')
+        BaseCommand.__init__(self, 'market', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 2)
@@ -110,7 +112,8 @@ For example, print the orderbook of the BTC/XLM market:
 market BTC XLM'''
 
     def __init__(self):
-        BaseCommand.__init__(self, 'orderbook')
+        BaseCommand.__init__(self, 'orderbook', self.USAGE_TEMPLATE_STRING,
+                             self.SHORT_USAGE_STRING)
 
     def _make_columns(self, order, currency_code, price):
         return [
@@ -146,7 +149,7 @@ class WalletsCommand(BaseCommand):
 Get all wallets. This will filter out the ones with no balance.'''
 
     def __init__(self):
-        BaseCommand.__init__(self, 'wallets')
+        BaseCommand.__init__(self, 'wallets', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 0)
@@ -178,7 +181,7 @@ For example, print the XLM wallet balance:
 market XLM'''
 
     def __init__(self):
-        BaseCommand.__init__(self, 'wallet')
+        BaseCommand.__init__(self, 'wallet', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 1)
@@ -205,7 +208,7 @@ class DepositsCommand(BaseCommand):
 Get the list of deposits made into wallets of this account.'''
 
     def __init__(self):
-        BaseCommand.__init__(self, 'deposits')
+        BaseCommand.__init__(self, 'deposits', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 0)
@@ -228,7 +231,8 @@ class WithdrawalsCommand(BaseCommand):
 Get the list of withdrawals made into wallets of this account.'''
 
     def __init__(self):
-        BaseCommand.__init__(self, 'withdrawals')
+        BaseCommand.__init__(self, 'withdrawals', self.USAGE_TEMPLATE_STRING,
+                             self.SHORT_USAGE_STRING)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 0)
@@ -260,7 +264,7 @@ For example, print the list of all open orders:
 orders open'''
 
     def __init__(self):
-        BaseCommand.__init__(self, 'orders')
+        BaseCommand.__init__(self, 'orders', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 1)
@@ -308,7 +312,7 @@ For example:
 cancel 8e84a510-fcd3-11e7-8be5-0ed5f89f718b'''
 
     def __init__(self):
-        BaseCommand.__init__(self, 'cancel')
+        BaseCommand.__init__(self, 'cancel', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 1)
@@ -339,7 +343,7 @@ Another example, selling all of our units of ETH at 1 BTC each:
 sell BTC ETH max 1'''
 
     def __init__(self):
-        BaseCommand.__init__(self, 'sell')
+        BaseCommand.__init__(self, 'sell', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 4)
@@ -401,7 +405,7 @@ Another example, buying all of our units of ETH at 1 BTC each:
 buy BTC ETH max 1'''
 
     def __init__(self):
-        BaseCommand.__init__(self, 'buy')
+        BaseCommand.__init__(self, 'buy', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 4)
@@ -469,7 +473,8 @@ withdraw XLM max C5JF5BT5VZIE this is my memo'''
 
     def __init__(self):
         # For the memo/payment id we don't want parsing, we'll handle that ourselves
-        BaseCommand.__init__(self, 'withdraw', parse_args=False)
+        BaseCommand.__init__(self, 'withdraw', self.USAGE_TEMPLATE_STRING,
+                             self.SHORT_USAGE_STRING, parse_args=False)
 
     def execute(self, core, raw_params):
         split_params = filter(lambda i: len(i) > 0, raw_params.strip().split(' '))
@@ -542,7 +547,7 @@ For example:
 usage withdraw'''
 
     def __init__(self):
-        BaseCommand.__init__(self, 'usage')
+        BaseCommand.__init__(self, 'usage', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 1)
@@ -559,7 +564,7 @@ class HelpCommand(BaseCommand):
 Print a help message'''
 
     def __init__(self):
-        BaseCommand.__init__(self, 'help')
+        BaseCommand.__init__(self, 'help', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 0)
