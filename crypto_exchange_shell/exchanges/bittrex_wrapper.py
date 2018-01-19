@@ -26,20 +26,20 @@
 # either expressed or implied, of the FreeBSD Project.
 
 from bittrex.bittrex import *
-from models import *
-from exceptions import ExchangeAPIException
-import utils
+from crypto_exchange_shell.models import *
+from crypto_exchange_shell.exceptions import ExchangeAPIException
+from crypto_exchange_shell.exchanges.base_exchange_wrapper import BaseExchangeWrapper
+import crypto_exchange_shell.utils
 
-class BittrexWrapper:
+class BittrexWrapper(BaseExchangeWrapper):
     ORDER_TYPE_MAPPINGS = {
         'LIMIT_SELL' : OrderType.limit_sell,
         'LIMIT_BUY' : OrderType.limit_buy,
     }
 
     def __init__(self, api_key, api_secret):
+        BaseExchangeWrapper.__init__(self)
         self._handle = Bittrex(api_key, api_secret)
-        self._markets = {}
-        self._currencies = {}
         self._load_markets()
 
     def _make_exchange_name(self, base_currency_code, market_currency_code):
@@ -49,12 +49,13 @@ class BittrexWrapper:
         result = self._handle.get_currencies()
         self._check_result(result)
         for data in result['result']:
-            code = data['Currency']
-            self._currencies[code] = Currency(
-                code,
-                data['CurrencyLong'],
-                data['MinConfirmation'],
-                data['TxFee']
+            self.add_currency(
+                Currency(
+                    data['Currency'],
+                    data['CurrencyLong'],
+                    data['MinConfirmation'],
+                    data['TxFee']
+                )
             )
 
     def _load_markets(self):
@@ -62,31 +63,16 @@ class BittrexWrapper:
         result = self._handle.get_markets()
         self._check_result(result)
         for market in result['result']:
-            base_currency = market['BaseCurrency']
-            market_currency = market['MarketCurrency']
-            if base_currency not in self._markets:
-                self._markets[base_currency] = set()
-            self._markets[base_currency].add(market_currency)
+            self.add_market(market['BaseCurrency'], market['MarketCurrency'])
 
     def _check_result(self, result):
         if not result['success']:
             raise ExchangeAPIException(result['message'])
 
-    def get_base_currencies(self):
-        return [self._currencies[x] for x in self._markets.keys()]
-
     def get_currency(self, currency_code):
         if currency_code not in self._currencies:
             raise InvalidArgumentException('Invalid currency {0}'.format(currency_code))
         return self._currencies[currency_code]
-
-    def get_currencies(self):
-        return self._currencies.values()
-
-    def get_markets(self, base_currency_code):
-        if base_currency_code not in self._markets:
-            raise InvalidArgumentException('Invalid base currency {0}'.format(base_currency_code))
-        return [self._currencies[x] for x in self._markets[base_currency_code]]
 
     def get_market_state(self, base_currency_code, market_currency_code):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)

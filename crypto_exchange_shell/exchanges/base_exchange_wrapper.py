@@ -25,63 +25,26 @@
 # of the authors and should not be interpreted as representing official policies,
 # either expressed or implied, of the FreeBSD Project.
 
-from binance.client import Client
-from models import *
-from exceptions import *
+from crypto_exchange_shell.exceptions import *
 
-class BinanceWrapper:
-    def __init__(self, api_key, api_secret):
-        self._handle = Client(api_key, api_secret)
+class BaseExchangeWrapper:
+    def __init__(self):
         self._currencies = {}
         self._markets = {}
-        self._load_markets()
 
-    def _add_currency(self, code):
-        if code not in self._currencies:
-            self._currencies[code] = Currency(code, code, 0, 0)
+    def add_currency(self, currency):
+        self._currencies[currency.code] = currency
 
-    def _make_exchange_name(self, base_currency_code, market_currency_code):
-        return '{0}{1}'.format(market_currency_code, base_currency_code)
-
-    def _load_markets(self):
-        result = self._handle.get_exchange_info()
-        for symbol in result['symbols']:
-            base_currency = symbol['quoteAsset']
-            market_currency = symbol['baseAsset']
-            self._add_currency(base_currency)
-            self._add_currency(market_currency)
-            if base_currency not in self._markets:
-                self._markets[base_currency] = set()
-            self._markets[base_currency].add(market_currency)
+    def add_market(self, base_currency_code, market_currency_code):
+        if base_currency_code not in self._markets:
+            self._markets[base_currency_code] = set()
+        self._markets[base_currency_code].add(market_currency_code)
 
     def get_base_currencies(self):
         return [self._currencies[x] for x in self._markets.keys()]
 
-    def get_currency(self, currency_code):
-        if currency_code not in self._currencies:
-            raise InvalidArgumentException('Invalid currency {0}'.format(currency_code))
-        return self._currencies[currency_code]
-
     def get_currencies(self):
         return self._currencies.values()
-
-    def get_market_state(self, base_currency_code, market_currency_code):
-        exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
-        result = self._handle.get_all_tickers()
-        price = None
-        for entry in result:
-            if entry['symbol'] == exchange_name:
-                price = entry['price']
-        if price is not None:
-            result = self._handle.get_orderbook_tickers()
-            for entry in result:
-                if entry['symbol'] == exchange_name:
-                    return MarketState(
-                        float(entry['askPrice']),
-                        float(entry['bidPrice']),
-                        float(price)
-                    )
-        raise ExchangeAPIException('Failed to fetch information for given market')
 
     def get_markets(self, base_currency_code):
         if base_currency_code not in self._markets:

@@ -30,8 +30,8 @@
 import signal
 import traceback
 import argparse
-from crypto_exchange_shell.bittrex_wrapper import BittrexWrapper
-from crypto_exchange_shell.binance_wrapper import BinanceWrapper
+from crypto_exchange_shell.exchanges.bittrex_wrapper import BittrexWrapper
+from crypto_exchange_shell.exchanges.binance_wrapper import BinanceWrapper
 from crypto_exchange_shell.commands import CommandManager
 from crypto_exchange_shell.shell_completer import ShellCompleter
 from crypto_exchange_shell.core import Core
