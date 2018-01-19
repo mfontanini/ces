@@ -103,14 +103,13 @@ class BittrexWrapper(BaseExchangeWrapper):
             # Shouldn't happen. TODO: log this
             if currency not in self._currencies:
                 continue
-            balance = Wallet(
+            wallet = Wallet(
                 self._currencies[currency],
                 data['Balance'],
                 data['Available'],
-                data['Pending'],
-                data['CryptoAddress']
+                data['Pending']
             )
-            output.append(balance)
+            output.append(wallet)
         return output
 
     def get_wallet(self, currency_code):
@@ -121,8 +120,7 @@ class BittrexWrapper(BaseExchangeWrapper):
             self._currencies[currency_code],
             data['Balance'],
             data['Available'],
-            data['Pending'],
-            data['CryptoAddress']
+            data['Pending']
         )
 
     def get_deposit_history(self):

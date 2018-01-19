@@ -152,11 +152,9 @@ class WalletCommand(BaseCommand):
         price = core.price_db.get_currency_price(currency_code)
         wallet = core.exchange_handle.get_wallet(currency_code)
         make_price = lambda i: utils.make_price_string(i, currency_code, price)
-        address = wallet.address if wallet.address else '<no address>'
         data = [
             ['Available balance', make_price(wallet.available)],
-            ['Pending balance', make_price(wallet.pending)],
-            ['Address', address]
+            ['Pending balance', make_price(wallet.pending)]
         ]
         table = AsciiTable(data, '{0} wallet'.format(currency_code))
         table.inner_heading_row_border = False
@@ -284,12 +282,13 @@ class SellCommand(BaseCommand):
             return
         price = core.price_db.get_currency_price(base_currency_code)
         data = [
-            ['Exchange', 'Amount', 'Rate'],
+            ['Exchange', 'Amount', 'Rate', 'Total price'],
         ]
         data.append([
             '{0}/{1}'.format(base_currency_code, market_currency_code),
             amount,
             utils.make_price_string(rate, base_currency_code, price),
+            utils.make_price_string(rate * amount, base_currency_code, price),
         ])
         table = AsciiTable(data, 'Sell operation')
         print table.table
@@ -329,12 +328,13 @@ class BuyCommand(BaseCommand):
             return
         price = core.price_db.get_currency_price(base_currency_code)
         data = [
-            ['Exchange', 'Amount', 'Rate'],
+            ['Exchange', 'Amount', 'Rate', 'Total price'],
         ]
         data.append([
             '{0}/{1}'.format(base_currency_code, market_currency_code),
-            amount,
+            '{0} {1}'.format(amount, market_currency_code),
             utils.make_price_string(rate, base_currency_code, price),
+            utils.make_price_string(rate * amount, base_currency_code, price)
         ])
         table = AsciiTable(data, 'Buy operation')
         print table.table

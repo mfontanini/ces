@@ -64,12 +64,11 @@ class Orderbook:
         self.orders.append(order)
 
 class Wallet:
-    def __init__(self, currency, balance, available, pending, address):
+    def __init__(self, currency, balance, available, pending):
         self.currency = currency
         self.balance = balance
         self.available = available
         self.pending = pending
-        self.address = address
 
 class Transfer:
     def __init__(self, currency, amount, transaction_id, confirmations, cost, cancelled):

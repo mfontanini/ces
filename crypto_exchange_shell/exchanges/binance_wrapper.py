@@ -70,3 +70,57 @@ class BinanceWrapper(BaseExchangeWrapper):
                         float(price)
                     )
         raise ExchangeAPIException('Failed to fetch information for given market')
+
+    def get_orderbook(self, base_currency_code, market_currency_code):
+        exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
+        result = self._handle.get_order_book(symbol=exchange_name)
+        buy_orderbook = Orderbook()
+        sell_orderbook = Orderbook()
+        for item in result['bids']:
+            buy_orderbook.add_order(Order(float(item[0]), float(item[1])))
+        for item in result['asks']:
+            sell_orderbook.add_order(Order(float(item[0]), float(item[1])))
+        return (buy_orderbook, sell_orderbook)
+
+    def get_wallets(self):
+        result = self._handle.get_account()
+        output = []
+        for data in result['balances']:
+            currency = data['asset']
+            # Shouldn't happen. TODO: log this
+            if currency not in self._currencies:
+                continue
+            free = float(data['free'])
+            locked = float(data['locked'])
+            wallet = Wallet(
+                self._currencies[currency],
+                free + locked,
+                free,
+                locked,
+                '<unknown>'
+            )
+            output.append(wallet)
+        return output
+
+    def get_wallet(self, currency_code):
+        result = self._handle.get_asset_balance(currency_code)
+        free = float(result['free'])
+        locked = float(result['locked'])
+        return Wallet(
+            self._currencies[currency_code],
+            free + locked,
+            free,
+            locked
+        )
+
+    def buy(self, base_currency_code, market_currency_code, amount, rate):
+        exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
+        result = self._handle.order_limit_buy(symbol=exchange_name, quantity=amount, price=rate)
+        return result['clientOrderId']
+
+    def sell(self, base_currency_code, market_currency_code, amount, rate):
+        exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
+        result = self._handle.order_limit_sell(symbol=exchange_name, quantity=amount, price=rate)
+        return result['clientOrderId']
+
+    
