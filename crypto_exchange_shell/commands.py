@@ -40,6 +40,9 @@ class BaseCommand:
         output = [output[0]] + ['-' * len(output[0])] + output[1:]
         return '\n'.join(output)
 
+    def short_usage(self):
+        return self.SHORT_USAGE_STRING
+
     def execute(self, core, params):
         pass
 
@@ -64,6 +67,7 @@ class BaseCommand:
         return datetime.strftime("%Y-%m-%d %H:%M:%S")
 
 class MarketStateCommand(BaseCommand):
+    SHORT_USAGE_STRING = 'get the market prices'
     USAGE_TEMPLATE_STRING = '''{0} <base-currency> <market-currency>
 Get the price at which the market <base-currency>/<market-currency>
 is operating.
@@ -97,6 +101,7 @@ market BTC XLM'''
 class OrderbookCommand(BaseCommand):
     MAX_LINES = 10
     BASE_ROW_FORMAT = '{{:<{0}}} | {{:<{1}}}'
+    SHORT_USAGE_STRING = 'get a market\'s orderbook'
     USAGE_TEMPLATE_STRING = '''{0} <base-currency> <market-currency>
 Get the orderbook for the market <base-currency>/<market-currency>.
 
@@ -136,6 +141,7 @@ market BTC XLM'''
         return self.generate_markets_parameters(core, current_parameters)
 
 class WalletsCommand(BaseCommand):
+    SHORT_USAGE_STRING = 'get the wallets and their balances'
     USAGE_TEMPLATE_STRING = '''{0}
 Get all wallets. This will filter out the ones with no balance.'''
 
@@ -163,6 +169,7 @@ Get all wallets. This will filter out the ones with no balance.'''
         return []
 
 class WalletCommand(BaseCommand):
+    SHORT_USAGE_STRING = 'get the balance for a specific wallet'
     USAGE_TEMPLATE_STRING = '''{0} <currency>
 Get the wallet information for <currency>.
 
@@ -193,6 +200,7 @@ market XLM'''
         return []
 
 class DepositsCommand(BaseCommand):
+    SHORT_USAGE_STRING = 'get the deposits made'
     USAGE_TEMPLATE_STRING = '''{0}
 Get the list of deposits made into wallets of this account.'''
 
@@ -215,6 +223,7 @@ Get the list of deposits made into wallets of this account.'''
         return []
 
 class WithdrawalsCommand(BaseCommand):
+    SHORT_USAGE_STRING = 'get the withdrawals made'
     USAGE_TEMPLATE_STRING = '''{0}
 Get the list of withdrawals made into wallets of this account.'''
 
@@ -241,6 +250,7 @@ Get the list of withdrawals made into wallets of this account.'''
         return []
 
 class OrdersCommand(BaseCommand):
+    SHORT_USAGE_STRING = 'get the active and settled orders'
     USAGE_TEMPLATE_STRING = '''{0} <open|completed>
 Get the list of orders either completed or open depending
 on the parameter used.
@@ -289,6 +299,7 @@ orders open'''
         return []
 
 class CancelOrderCommand(BaseCommand):
+    SHORT_USAGE_STRING = 'cancel an order'
     USAGE_TEMPLATE_STRING = '''{0} <order-id>
 Cancel the buy/sell order with id <order-id>
 
@@ -311,6 +322,7 @@ cancel 8e84a510-fcd3-11e7-8be5-0ed5f89f718b'''
         return []
 
 class SellCommand(BaseCommand):
+    SHORT_USAGE_STRING = 'place a sell order'
     USAGE_TEMPLATE_STRING = '''{0} <base-currency> <market-currency> <amount|max> <rate>
 Create a sell order for <amount> coins at rate <rate> in
 the market <base-currency>/<market-currency>.
@@ -372,6 +384,7 @@ sell BTC ETH max 1'''
         return []
 
 class BuyCommand(BaseCommand):
+    SHORT_USAGE_STRING = 'place a buy order'
     USAGE_TEMPLATE_STRING = '''{0} <base-currency> <market-currency> <amount|max> <rate>
 Create a buy order for <amount> coins at rate <rate> in
 the market <base-currency>/<market-currency>.
@@ -433,6 +446,7 @@ buy BTC ETH max 1'''
         return []
 
 class WithdrawCommand(BaseCommand):
+    SHORT_USAGE_STRING = 'withdraw funds'
     USAGE_TEMPLATE_STRING = '''{0} <currency> <amount|max> <address> [address-tag]
 Withdraw <amount> funds from the <currency> wallet into
 a wallet with address <address>.
@@ -516,6 +530,7 @@ withdraw XLM max C5JF5BT5VZIE this is my memo'''
         return []
 
 class UsageCommand(BaseCommand):
+    SHORT_USAGE_STRING = 'print command\'s usage'
     USAGE_TEMPLATE_STRING = '''{0} <command>
 Print the usage for <command>.
 
@@ -538,6 +553,25 @@ usage withdraw'''
             return core.cmd_manager.get_command_names()
         return []
 
+class HelpCommand(BaseCommand):
+    SHORT_USAGE_STRING = 'print this help message'
+    USAGE_TEMPLATE_STRING = '''{0}
+Print a help message'''
+
+    def __init__(self):
+        BaseCommand.__init__(self, 'help')
+
+    def execute(self, core, params):
+        self.ensure_parameter_count(params, 0)
+        data = [['Command', 'Help']]
+        for cmd in core.cmd_manager.get_command_names():
+            data.append([cmd, core.cmd_manager.get_command(cmd).short_usage()])
+        table = AsciiTable(data, 'Commands')
+        print table.table
+
+    def generate_parameters(self, core, current_parameters):
+        return []
+
 class CommandManager:
     def __init__(self):
         self._commands = {
@@ -553,6 +587,7 @@ class CommandManager:
             'buy' : BuyCommand(),
             'withdraw' : WithdrawCommand(),
             'usage' : UsageCommand(),
+            'help' : HelpCommand(),
         }
 
     def add_command(self, name, command):
