@@ -96,8 +96,7 @@ class BinanceWrapper(BaseExchangeWrapper):
                 self._currencies[currency],
                 free + locked,
                 free,
-                locked,
-                '<unknown>'
+                locked
             )
             output.append(wallet)
         return output

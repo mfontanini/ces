@@ -165,6 +165,10 @@ Get all wallets. This will filter out the ones with no balance.'''
                 utils.make_price_string(wallet.available, wallet.currency.code, price),
                 utils.make_price_string(wallet.pending, wallet.currency.code, price),
             ])
+        # If we only have the labels
+        if len(data) == 1:
+            print 'No wallets currently have funds'
+            return
         table = AsciiTable(data, 'wallets')
         print table.table
 
