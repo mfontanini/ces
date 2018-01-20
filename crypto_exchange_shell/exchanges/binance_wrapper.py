@@ -131,3 +131,11 @@ class BinanceWrapper(BaseExchangeWrapper):
                                                                              quantity=amount,
                                                                              price=rate))
         return result['clientOrderId']
+
+    def get_deposit_address(self, currency_code):
+        result = self._perform_request(lambda: self._handle.get_deposit_address(asset=currency_code))
+        return CryptoAddress(
+            currency_code,
+            result['address'],
+            result.get('addresTag', None)
+        )

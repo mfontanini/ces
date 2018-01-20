@@ -68,10 +68,6 @@ except Exception as ex:
     print 'Error parsing config: {0}'.format(ex)
     exit(1)
 
-price_db = PriceDatabase()
-print 'Fetching latest crypto currency prices...'
-price_db.wait_for_data()
-running = True
 
 print 'Fetching data from exchange...'
 try:
@@ -85,6 +81,10 @@ try:
 except Exception as ex:
     print 'Failed to create {0} handle: {1}'.format(config_manager.exchange_name, ex)
     exit(1)
+price_db = PriceDatabase()
+print 'Fetching latest crypto currency prices...'
+price_db.wait_for_data()
+running = True
 cmd_manager = CommandManager()
 core = Core(handle, cmd_manager, price_db)
 completer = ShellCompleter(core)

@@ -100,3 +100,9 @@ class TradeOrder:
         self.price_per_unit = price_per_unit
         self.order_type = order_type
         self.order_type_string = TradeOrder.ORDER_TYPE_TO_STRING[order_type]
+
+class CryptoAddress:
+    def __init__(self, currency, address, address_tag = None):
+        self.currency = currency
+        self.address = address
+        self.address_tag = address_tag

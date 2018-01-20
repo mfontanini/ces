@@ -36,10 +36,12 @@ class BittrexWrapper(BaseExchangeWrapper):
         'LIMIT_SELL' : OrderType.limit_sell,
         'LIMIT_BUY' : OrderType.limit_buy,
     }
+    CURRENCIES_WITH_ADDRESS_TAG = set(['XLM', 'XMR', 'NXT'])
 
     def __init__(self, api_key, api_secret):
         BaseExchangeWrapper.__init__(self)
         self._handle = Bittrex(api_key, api_secret)
+        self._handle_v2 = Bittrex(api_key, api_secret, api_version=API_V2_0)
         self._load_markets()
 
     def _make_exchange_name(self, base_currency_code, market_currency_code):
@@ -251,3 +253,28 @@ class BittrexWrapper(BaseExchangeWrapper):
         )
         self._check_result(result)
         return result['result']['uuid']
+
+    def get_deposit_address(self, currency_code):
+        self._check_result(self._handle_v2.generate_deposit_address(currency_code))
+        result = self._handle_v2.get_deposit_address(currency_code)
+        if result['success'] == False:
+            # Address may take a bit of time to be generated
+            if result['message'] == 'ADDRESS_GENERATING':
+                return None
+            self._check_result(result)
+        data = result['result']
+        result_base_address = data['BaseAddress']
+        result_address = data['Address']
+        address_tag = None
+        if result_address is None:
+            address = result_base_address
+        elif currency_code in BittrexWrapper.CURRENCIES_WITH_ADDRESS_TAG:
+            address = result_base_address
+            address_tag = result_address
+        else:
+            address = result_address
+        return CryptoAddress(
+            currency_code,
+            address,
+            address_tag
+        )

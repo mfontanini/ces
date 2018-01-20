@@ -102,7 +102,7 @@ markets BTC'''
             raise ParameterCountException(self.name, 0)
         print table.table
 
-    def generate_parameters(self, core, params):
+    def generate_parameter(sself, core, params):
         if len(params) == 0:
             return map(lambda i: i.code, core.exchange_handle.get_base_currencies())
         return []
@@ -620,6 +620,38 @@ Print a help message'''
     def generate_parameters(self, core, current_parameters):
         return []
 
+class DepositAddressCommand(BaseCommand):
+    SHORT_USAGE_STRING = 'get the deposit address for a currency'
+    USAGE_TEMPLATE_STRING = '''{0} <currency>
+Print the withdraw address for a specific currency.
+
+For example:
+
+{0} XLM'''
+
+    def __init__(self):
+        BaseCommand.__init__(self, 'deposit_address', self.USAGE_TEMPLATE_STRING,
+                             self.SHORT_USAGE_STRING)
+
+    def execute(self, core, params):
+        self.ensure_parameter_count(params, 1)
+        currency_code = params[0]
+        address = core.exchange_handle.get_deposit_address(currency_code)
+        data = [['Address', address.address]]
+        if address.address_tag:
+            data.append([
+                WithdrawCommand.ADDRESS_TAG_NAME[currency_code],
+                address.address_tag
+            ])
+        table = AsciiTable(data, '{0} deposit address'.format(currency_code))
+        table.inner_heading_row_border = False
+        print table.table
+
+    def generate_parameters(self, core, current_parameters):
+        if len(current_parameters) == 0:
+            return map(lambda i: i.code, core.exchange_handle.get_base_currencies())
+        return []
+
 class CommandManager:
     def __init__(self):
         self._commands = {
@@ -635,6 +667,7 @@ class CommandManager:
             'sell' : SellCommand(),
             'buy' : BuyCommand(),
             'withdraw' : WithdrawCommand(),
+            'deposit_address' : DepositAddressCommand(),
             'usage' : UsageCommand(),
             'help' : HelpCommand(),
         }
