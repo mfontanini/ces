@@ -36,11 +36,17 @@ class BinanceWrapper(BaseExchangeWrapper):
         self._handle = Client(api_key, api_secret)
         self._load_markets()
 
+    def _perform_request(self, request_lambda):
+        try:
+            return request_lambda()
+        except Exception as ex:
+            raise ExchangeAPIException(ex.message)
+
     def _make_exchange_name(self, base_currency_code, market_currency_code):
         return '{0}{1}'.format(market_currency_code, base_currency_code)
 
     def _load_markets(self):
-        result = self._handle.get_exchange_info()
+        result = self._perform_request(lambda: self._handle.get_exchange_info())
         for symbol in result['symbols']:
             base_currency = symbol['quoteAsset']
             market_currency = symbol['baseAsset']
@@ -55,7 +61,7 @@ class BinanceWrapper(BaseExchangeWrapper):
 
     def get_market_state(self, base_currency_code, market_currency_code):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
-        result = self._handle.get_all_tickers()
+        result = self._perform_request(lambda: self._handle.get_all_tickers())
         price = None
         for entry in result:
             if entry['symbol'] == exchange_name:
@@ -73,7 +79,7 @@ class BinanceWrapper(BaseExchangeWrapper):
 
     def get_orderbook(self, base_currency_code, market_currency_code):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
-        result = self._handle.get_order_book(symbol=exchange_name)
+        result = self._perform_request(lambda: self._handle.get_order_book(symbol=exchange_name))
         buy_orderbook = Orderbook()
         sell_orderbook = Orderbook()
         for item in result['bids']:
@@ -83,7 +89,7 @@ class BinanceWrapper(BaseExchangeWrapper):
         return (buy_orderbook, sell_orderbook)
 
     def get_wallets(self):
-        result = self._handle.get_account()
+        result = self._perform_request(lambda: self._handle.get_account())
         output = []
         for data in result['balances']:
             currency = data['asset']
@@ -102,7 +108,7 @@ class BinanceWrapper(BaseExchangeWrapper):
         return output
 
     def get_wallet(self, currency_code):
-        result = self._handle.get_asset_balance(currency_code)
+        result = self._perform_request(lambda: self._handle.get_asset_balance(currency_code))
         free = float(result['free'])
         locked = float(result['locked'])
         return Wallet(
@@ -114,12 +120,14 @@ class BinanceWrapper(BaseExchangeWrapper):
 
     def buy(self, base_currency_code, market_currency_code, amount, rate):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
-        result = self._handle.order_limit_buy(symbol=exchange_name, quantity=amount, price=rate)
+        result = self._perform_request(lambda: self._handle.order_limit_buy(symbol=exchange_name,
+                                                                            quantity=amount,
+                                                                            price=rate))
         return result['clientOrderId']
 
     def sell(self, base_currency_code, market_currency_code, amount, rate):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
-        result = self._handle.order_limit_sell(symbol=exchange_name, quantity=amount, price=rate)
+        result = self._perform_request(lambda: self._handle.order_limit_sell(symbol=exchange_name,
+                                                                             quantity=amount,
+                                                                             price=rate))
         return result['clientOrderId']
-
-    

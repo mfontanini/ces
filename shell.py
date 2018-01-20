@@ -74,12 +74,16 @@ price_db.wait_for_data()
 running = True
 
 print 'Fetching data from exchange...'
-if config_manager.exchange_name == 'bittrex':
-    handle = BittrexWrapper(config_manager.api_key, config_manager.api_secret)
-elif config_manager.exchange_name == 'binance':
-    handle = BinanceWrapper(config_manager.api_key, config_manager.api_secret)
-else:
-    print 'Unkown exchange {0}'.format(config_manager.exchange_name)
+try:
+    if config_manager.exchange_name == 'bittrex':
+        handle = BittrexWrapper(config_manager.api_key, config_manager.api_secret)
+    elif config_manager.exchange_name == 'binance':
+        handle = BinanceWrapper(config_manager.api_key, config_manager.api_secret)
+    else:
+        print 'Unkown exchange {0}'.format(config_manager.exchange_name)
+        exit(1)
+except Exception as ex:
+    print 'Failed to create {0} handle: {1}'.format(config_manager.exchange_name, ex)
     exit(1)
 cmd_manager = CommandManager()
 core = Core(handle, cmd_manager, price_db)
