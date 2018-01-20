@@ -68,6 +68,45 @@ class BaseCommand:
     def format_date(self, datetime):
         return datetime.strftime("%Y-%m-%d %H:%M:%S")
 
+class MarketsCommand(BaseCommand):
+    SHORT_USAGE_STRING = 'list the available markets'
+    USAGE_TEMPLATE_STRING = '''{0} [base-currency]
+List the available markets. When executed with no parameters,
+this will print the base currencies that can be used. When
+a base currency is provided, the markets for that currency
+will be displayed.
+
+For example, print the available markets for BTC (e.g. all BTC/X pairs):
+
+markets BTC'''
+
+    def __init__(self):
+        BaseCommand.__init__(self, 'markets', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
+
+    def execute(self, core, params):
+        if len(params) == 0:
+            data = [['Currency']]
+            codes = map(lambda i: i.code, core.exchange_handle.get_base_currencies())
+            codes.sort()
+            for i in codes:
+                data.append([i])
+            table = AsciiTable(data)
+        elif len(params) == 1:
+            markets = map(lambda i: i.code, core.exchange_handle.get_markets(params[0]))
+            markets.sort()
+            data = [['Market']]
+            for i in markets:
+                data.append(['{0}/{1}'.format(params[0], i)])
+            table = AsciiTable(data)
+        else:
+            raise ParameterCountException(self.name, 0)
+        print table.table
+
+    def generate_parameters(self, core, params):
+        if len(params) == 0:
+            return map(lambda i: i.code, core.exchange_handle.get_base_currencies())
+        return []
+
 class MarketStateCommand(BaseCommand):
     SHORT_USAGE_STRING = 'get the market prices'
     USAGE_TEMPLATE_STRING = '''{0} <base-currency> <market-currency>
@@ -585,6 +624,7 @@ class CommandManager:
     def __init__(self):
         self._commands = {
             'market' : MarketStateCommand(),
+            'markets' : MarketsCommand(),
             'orderbook' : OrderbookCommand(),
             'wallets' : WalletsCommand(),
             'wallet' : WalletCommand(),
