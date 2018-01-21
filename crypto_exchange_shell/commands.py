@@ -398,7 +398,7 @@ sell BTC ETH max 1'''
         if amount == 'max':
             amount = wallet.available
         else:
-            amount = int(amount)
+            amount = float(amount)
         if amount > wallet.available:
             print 'Wallet only contains {0} {1}'.format(wallet.available, market_currency_code)
             return
@@ -460,7 +460,7 @@ buy BTC ETH max 1'''
         if amount == 'max':
             amount = wallet.available
         else:
-            amount = int(amount)
+            amount = float(amount)
         if amount > wallet.available:
             print 'Wallet only contains {0} {1}'.format(wallet.available, base_currency_code)
             return
