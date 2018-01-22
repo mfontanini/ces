@@ -154,25 +154,28 @@ market BTC XLM'''
         BaseCommand.__init__(self, 'orderbook', self.USAGE_TEMPLATE_STRING,
                              self.SHORT_USAGE_STRING)
 
-    def _make_columns(self, order, currency_code, price):
+    def _make_columns(self, order, base_currency_code, market_currency_code, price):
         return [
-            utils.make_price_string(order.rate, currency_code, price),
-            '{0:.2f}'.format(order.quantity)
+            utils.make_price_string(order.rate, base_currency_code, price),
+            '{0:.2f} {1}'.format(order.quantity, market_currency_code)
         ]
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 2)
         base_code = params[0]
+        market_code = params[1]
         price = core.price_db.get_currency_price(base_code)
         (buy_orderbook, sell_orderbook) = core.exchange_handle.get_orderbook(
             base_code,
-            params[1]
+            market_code
         )
         buy_rows = [['Rate', 'Quantity']]
         sell_rows = [['Rate', 'Quantity']]
         for i in range(OrderbookCommand.MAX_LINES):
-            buy_rows.append(self._make_columns(buy_orderbook.orders[i], base_code, price))
-            sell_rows.append(self._make_columns(sell_orderbook.orders[i], base_code, price))
+            buy_rows.append(self._make_columns(buy_orderbook.orders[i], base_code, market_code,
+                                               price))
+            sell_rows.append(self._make_columns(sell_orderbook.orders[i], base_code, market_code,
+                                                price))
 
         buy_table_rows = utils.make_table_rows('Bids', buy_rows)
         sell_table_rows = utils.make_table_rows('Asks', sell_rows)
@@ -242,7 +245,7 @@ market XLM'''
 
     def generate_parameters(self, core, current_parameters):
         if len(current_parameters) == 0:
-            return map(lambda i: i.code, core.exchange_handle.get_base_currencies())
+            return map(lambda i: i.code, core.exchange_handle.get_currencies())
         return []
 
 class DepositsCommand(BaseCommand):
@@ -527,7 +530,7 @@ withdraw XLM max C5JF5BT5VZIE this is my memo'''
         amount = split_params[1]
         wallet = core.exchange_handle.get_wallet(currency.code)
         if amount == 'max':
-            amount = wallet.available - currency.withdraw_fee
+            amount = wallet.available
         else:
             amount = float(amount)
             if wallet.balance <= amount:
@@ -551,7 +554,7 @@ withdraw XLM max C5JF5BT5VZIE this is my memo'''
         price = core.price_db.get_currency_price(currency.code)
         data.append([
             currency.code,
-            utils.make_price_string(amount, currency.code, price),
+            utils.make_price_string(amount - currency.withdraw_fee, currency.code, price),
             utils.make_price_string(currency.withdraw_fee, currency.code, price),
             address
         ])
