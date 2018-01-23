@@ -203,7 +203,7 @@ Get all wallets. This will filter out the ones with no balance.'''
                 break
             price = core.price_db.get_currency_price(wallet.currency.code)
             data.append([
-                wallet.currency.code,
+                '{0} ({1})'.format(wallet.currency.name, wallet.currency.code),
                 utils.make_price_string(wallet.available, wallet.currency.code, price),
                 utils.make_price_string(wallet.pending, wallet.currency.code, price),
             ])
@@ -231,15 +231,15 @@ market XLM'''
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 1)
-        currency_code = params[0]
-        price = core.price_db.get_currency_price(currency_code)
-        wallet = core.exchange_handle.get_wallet(currency_code)
-        make_price = lambda i: utils.make_price_string(i, currency_code, price)
+        currency = core.exchange_handle.get_currency(params[0])
+        price = core.price_db.get_currency_price(currency.code)
+        wallet = core.exchange_handle.get_wallet(currency.code)
+        make_price = lambda i: utils.make_price_string(i, currency.code, price)
         data = [
             ['Available balance', make_price(wallet.available)],
             ['Pending balance', make_price(wallet.pending)]
         ]
-        table = AsciiTable(data, '{0} wallet'.format(currency_code))
+        table = AsciiTable(data, '{0} wallet'.format(currency.name))
         table.inner_heading_row_border = False
         print table.table
 

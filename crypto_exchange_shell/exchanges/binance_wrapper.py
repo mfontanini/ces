@@ -25,6 +25,8 @@
 # of the authors and should not be interpreted as representing official policies,
 # either expressed or implied, of the FreeBSD Project.
 
+import requests
+import json
 from binance.client import Client
 from crypto_exchange_shell.models import *
 from crypto_exchange_shell.exceptions import *
@@ -42,16 +44,32 @@ class BinanceWrapper(BaseExchangeWrapper):
         except Exception as ex:
             raise ExchangeAPIException(ex.message)
 
+    def _load_names(self):
+        try:
+            result = requests.get('https://api.coinmarketcap.com/v1/ticker/')
+            data = json.loads(result.text)
+        except Exception as ex:
+            print 'Failed to parse coinmarketcap data: {0}'.format(ex)
+        names = {}
+        for item in data:
+            names[item['symbol']] = item['name']
+        return names
+
     def _make_exchange_name(self, base_currency_code, market_currency_code):
         return '{0}{1}'.format(market_currency_code, base_currency_code)
 
     def _load_markets(self):
+        names = self._load_names()
         result = self._perform_request(lambda: self._handle.get_exchange_info())
         for symbol in result['symbols']:
             base_currency = symbol['quoteAsset']
             market_currency = symbol['baseAsset']
-            self.add_currency(Currency(base_currency, base_currency, 0, 0))
-            self.add_currency(Currency(market_currency, market_currency, 0, 0))
+            self.add_currency(
+                Currency(base_currency, names.get(base_currency, base_currency), 0, 0)
+            )
+            self.add_currency(
+                Currency(market_currency, names.get(market_currency, market_currency), 0, 0)
+            )
             self.add_market(base_currency, market_currency)
 
     def get_currency(self, currency_code):
