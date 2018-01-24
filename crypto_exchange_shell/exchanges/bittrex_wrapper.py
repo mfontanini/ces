@@ -29,12 +29,19 @@ from bittrex.bittrex import *
 from crypto_exchange_shell.models import *
 from crypto_exchange_shell.exceptions import ExchangeAPIException
 from crypto_exchange_shell.exchanges.base_exchange_wrapper import BaseExchangeWrapper
-import crypto_exchange_shell.utils
+import crypto_exchange_shell.utils as utils
 
 class BittrexWrapper(BaseExchangeWrapper):
     ORDER_TYPE_MAPPINGS = {
         'LIMIT_SELL' : OrderType.limit_sell,
         'LIMIT_BUY' : OrderType.limit_buy,
+    }
+    INTERVAL_MAP = {
+        CandleTicks.one_minute : 'oneMin',
+        CandleTicks.five_minutes : 'fiveMin',
+        CandleTicks.thirty_minutes : 'thirtyMin',
+        CandleTicks.one_hour : 'hour',
+        CandleTicks.one_day : 'day',
     }
     CURRENCIES_WITH_ADDRESS_TAG = set(['XLM', 'XMR', 'NXT'])
 
@@ -278,3 +285,21 @@ class BittrexWrapper(BaseExchangeWrapper):
             address,
             address_tag
         )
+
+    def get_candles(self, base_currency_code, market_currency_code, interval):
+        exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
+        result = self._handle_v2.get_candles(
+            exchange_name,
+            BittrexWrapper.INTERVAL_MAP[interval]
+        )
+        self._check_result(result)
+        output = []
+        for i in result['result']:
+            output.append(Candle(
+                i["L"],
+                i["H"],
+                i["O"],
+                i["C"],
+                utils.datetime_from_utc_time(i["T"])
+            ))
+        return output

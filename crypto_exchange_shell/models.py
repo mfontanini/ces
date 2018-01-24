@@ -106,3 +106,16 @@ class CryptoAddress:
         self.currency = currency
         self.address = address
         self.address_tag = address_tag
+
+class Candle:
+    def __init__(self, lowest_price, highest_price, open_price, close_price, timestamp):
+        self.lowest_price = lowest_price
+        self.highest_price = highest_price
+        self.open_price = open_price
+        self.close_price = close_price
+        self.timestamp = timestamp
+
+CandleTicks = Enum(
+    'CandleTicks',
+    'one_minute five_minutes thirty_minutes one_hour one_day'
+)

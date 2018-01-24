@@ -36,6 +36,7 @@ import getpass
 from Crypto.Cipher import AES
 from Crypto import Random
 from dateutil.tz import tzutc, tzlocal
+from models import CandleTicks
 
 def format_float(number_format, number):
     # Format it, then remove right zeroes and remove dot if all decimals are gone
@@ -95,3 +96,13 @@ def ask_for_passphrase(text):
         return getpass.getpass(text)
     except (KeyboardInterrupt, EOFError):
         return None
+
+def make_candle_label(date, interval):
+    formats = {
+        CandleTicks.one_minute : "%H:%M",
+        CandleTicks.five_minutes : "%H:%M",
+        CandleTicks.thirty_minutes : "%H:%M",
+        CandleTicks.one_hour : "%H:%M",
+        CandleTicks.one_day : "%d/%m"
+    }
+    return date.strftime(formats[interval])

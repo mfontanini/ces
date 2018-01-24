@@ -27,12 +27,23 @@
 
 import requests
 import json
+from time import mktime
+from datetime import datetime
 from binance.client import Client
 from crypto_exchange_shell.models import *
 from crypto_exchange_shell.exceptions import *
 from crypto_exchange_shell.exchanges.base_exchange_wrapper import BaseExchangeWrapper
+import crypto_exchange_shell.utils as utils
 
 class BinanceWrapper(BaseExchangeWrapper):
+    INTERVAL_MAP = {
+        CandleTicks.one_minute : Client.KLINE_INTERVAL_1MINUTE,
+        CandleTicks.five_minutes : Client.KLINE_INTERVAL_5MINUTE,
+        CandleTicks.thirty_minutes : Client.KLINE_INTERVAL_30MINUTE,
+        CandleTicks.one_hour : Client.KLINE_INTERVAL_1HOUR,
+        CandleTicks.one_day : Client.KLINE_INTERVAL_1DAY,
+    }
+
     def __init__(self, api_key, api_secret):
         BaseExchangeWrapper.__init__(self)
         self._handle = Client(api_key, api_secret)
@@ -157,3 +168,22 @@ class BinanceWrapper(BaseExchangeWrapper):
             result['address'],
             result.get('addresTag', None)
         )
+
+    def get_candles(self, base_currency_code, market_currency_code, interval):
+        exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
+        result = self._perform_request(lambda:
+            self._handle.get_klines(
+                symbol=exchange_name,
+                interval=BinanceWrapper.INTERVAL_MAP[interval]
+            )
+        )
+        output = []
+        for i in result:
+            output.append(Candle(
+                float(i[3]), # Low
+                float(i[2]), # High
+                float(i[1]), # Open
+                float(i[4]), # Close
+                utils.datetime_from_utc_time(str(i[0]))
+            ))
+        return output

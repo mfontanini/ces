@@ -26,8 +26,10 @@
 # either expressed or implied, of the FreeBSD Project.
 
 import utils
+import sys
 from terminaltables import AsciiTable
 from exceptions import *
+from models import CandleTicks
 
 class BaseCommand:
     def __init__(self, name, usage_template, short_usage_string, parse_args=True):
@@ -655,6 +657,88 @@ For example:
             return map(lambda i: i.code, core.exchange_handle.get_base_currencies())
         return []
 
+class CandlesCommand(BaseCommand):
+    SAMPLE_COUNT = 50
+    SHORT_USAGE_STRING = 'fetch the candles for a market'
+    USAGE_TEMPLATE_STRING = ''''''
+
+    def __init__(self):
+        BaseCommand.__init__(self, 'candles', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
+
+    def execute(self, core, params):
+        self.ensure_parameter_count(params, 3)
+        base_currency_code = params[0]
+        market_currency_code = params[1]
+        try:
+            interval = CandleTicks[params[2]]
+        except KeyError:
+            raise CommandExecutionException('Provided interval is invalid')
+        candles = core.exchange_handle.get_candles(
+            base_currency_code,
+            market_currency_code,
+            interval
+        )
+        candles = candles[-CandlesCommand.SAMPLE_COUNT:]
+        lowest = None
+        highest = None
+        for i in candles:
+            if lowest is None or i.lowest_price < lowest:
+                lowest = i.lowest_price
+            if highest is None or i.highest_price > highest:
+                highest = i.highest_price
+        height = 24
+        matrix = []
+        normalize = lambda v: (v - lowest) / (highest - lowest)
+        for i in candles:
+            open_value = normalize(i.open_price)
+            close_value = normalize(i.close_price)
+            low_value = normalize(i.lowest_price)
+            high_value = normalize(i.highest_price)
+            top = max(open_value, close_value)
+            bottom = min(open_value, close_value)
+            column = []
+            for i in range(height):
+                value = i / float(height)
+                if value >= bottom and value <= top:
+                    column.append(u'\u028C' if close_value > open_value else 'v')
+                elif value > low_value and value < high_value:
+                    column.append(u'\u00A6')
+                else:
+                    column.append(' ')
+            column.reverse()
+            matrix.append(column)
+
+        y_label_length = 0
+        y_labels = []
+        for i in range(height):
+            value = lowest + (i / float(height)) * (highest - lowest)
+            y_label_length = max(y_label_length, len('{0:.5f}'.format(value)))
+            y_labels.append(value)
+
+        y_labels.reverse()
+        y_fmt_string = u'{{0:{0}.5f}} | '.format(y_label_length)
+        for i in range(height):
+            sys.stdout.write(y_fmt_string.format(y_labels[i]))
+            for column in matrix:
+                sys.stdout.write(column[i] + " ")
+            sys.stdout.write('\n')
+        print u'\u2015' * (len(candles) * 2 + len(y_fmt_string.format(0.0)))
+        label_length = 5
+        x_labels = []
+        for i in range(1, len(candles), 4):
+            x_labels.append(utils.make_candle_label(candles[i].timestamp, interval))
+        print ' ' * len(y_fmt_string.format(0.0)) + '   '.join(x_labels)
+
+
+    def generate_parameters(self, core, current_parameters):
+        if len(current_parameters) == 0:
+            return map(lambda i: i.code, core.exchange_handle.get_base_currencies())
+        elif len(current_parameters) == 1:
+            return map(lambda i: i.code, core.exchange_handle.get_markets(current_parameters[0]))
+        elif len(current_parameters) == 2:
+            return CandleTicks.__members__.keys()
+        return []
+
 class CommandManager:
     def __init__(self):
         self._commands = {
@@ -671,6 +755,7 @@ class CommandManager:
             'buy' : BuyCommand(),
             'withdraw' : WithdrawCommand(),
             'deposit_address' : DepositAddressCommand(),
+            'candles' : CandlesCommand(),
             'usage' : UsageCommand(),
             'help' : HelpCommand(),
         }
