@@ -734,8 +734,9 @@ class CandlesCommand(BaseCommand):
         print u'\u2015' * (len(candles) * 2 + len(y_fmt_string.format(0.0)))
         label_length = 5
         x_labels = []
-        for i in range(1, len(candles), 4):
+        for i in range(len(candles) - 1, 0, -4):
             x_labels.append(utils.make_candle_label(candles[i].timestamp, interval))
+        x_labels.reverse()
         print ' ' * len(y_fmt_string.format(0.0)) + '   '.join(x_labels)
 
 
