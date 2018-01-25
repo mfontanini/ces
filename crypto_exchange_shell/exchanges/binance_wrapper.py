@@ -46,7 +46,7 @@ class BinanceWrapper(BaseExchangeWrapper):
     }
 
     def __init__(self, api_key, api_secret):
-        BaseExchangeWrapper.__init__(self)
+        BaseExchangeWrapper.__init__(self, exposes_confirmations=False)
         self._handle = Client(api_key, api_secret)
         self._load_markets()
 
@@ -147,6 +147,26 @@ class BinanceWrapper(BaseExchangeWrapper):
             free,
             locked
         )
+
+    def get_deposit_history(self):
+        result = self._perform_request(lambda: self._handle.get_deposit_history())
+        output = []
+        for i in result['depositList']:
+            # TODO: somehow log this
+            if i["asset"] not in self._currencies:
+                continue
+            output.append(
+                Transfer(
+                    self._currencies[i["asset"]],
+                    float(i["amount"]),
+                    i["txId"],
+                    i["status"], # Status == 1 means success
+                    0,
+                    False,
+                    dateparser.parse(str(i["insertTime"])),
+                )
+            )
+        return output
 
     def buy(self, base_currency_code, market_currency_code, amount, rate):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)

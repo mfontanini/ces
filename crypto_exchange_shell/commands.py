@@ -260,12 +260,21 @@ Get the list of deposits made into wallets of this account.'''
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 0)
-        data = [['Amount', 'Transaction id', 'Confirmations']]
+        has_confirmations = core.exchange_handle.exposes_confirmations
+        data = [
+            ['Timestamp', 'Amount', 'Transaction id',
+             'Confirmations' if has_confirmations else 'Status']
+        ]
         for deposit in core.exchange_handle.get_deposit_history():
+            if has_confirmations:
+                status = '{0}/{1}'.format(deposit.confirmations, deposit.currency.min_confirmations)
+            else:
+                status = 'Completed' if deposit.confirmations > 0 else 'Pending'
             data.append([
+                self.format_date(deposit.timestamp),
                 '{0} {1}'.format(deposit.amount, deposit.currency.code),
                 deposit.transaction_id,
-                '{0}/{1}'.format(deposit.confirmations, deposit.currency.min_confirmations)
+                status
             ])
         table = AsciiTable(data, 'Deposits')
         print table.table

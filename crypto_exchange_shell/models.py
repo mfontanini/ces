@@ -71,13 +71,14 @@ class Wallet:
         self.pending = pending
 
 class Transfer:
-    def __init__(self, currency, amount, transaction_id, confirmations, cost, cancelled):
+    def __init__(self, currency, amount, transaction_id, confirmations, cost, cancelled, timestamp):
         self.currency = currency
         self.amount = amount
         self.transaction_id = transaction_id
         self.confirmations = confirmations
         self.cost = cost
         self.cancelled = cancelled
+        self.timestamp = timestamp
 
 OrderType = Enum('OrderType', 'limit_sell limit_buy')
 

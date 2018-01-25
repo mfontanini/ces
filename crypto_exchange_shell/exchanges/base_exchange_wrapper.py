@@ -29,9 +29,10 @@ from enum import Enum
 from crypto_exchange_shell.exceptions import *
 
 class BaseExchangeWrapper:
-    def __init__(self):
+    def __init__(self, exposes_confirmations=True):
         self._currencies = {}
         self._markets = {}
+        self.exposes_confirmations = exposes_confirmations
 
     def add_currency(self, currency):
         self._currencies[currency.code] = currency
