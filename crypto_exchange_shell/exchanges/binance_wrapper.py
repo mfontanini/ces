@@ -27,6 +27,7 @@
 
 import requests
 import json
+import dateparser
 from time import mktime
 from datetime import datetime
 from binance.client import Client
@@ -184,6 +185,6 @@ class BinanceWrapper(BaseExchangeWrapper):
                 float(i[2]), # High
                 float(i[1]), # Open
                 float(i[4]), # Close
-                utils.datetime_from_utc_time(str(i[0]))
+                dateparser.parse(str(i[0]))
             ))
         return output
