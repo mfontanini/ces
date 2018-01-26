@@ -70,6 +70,13 @@ class BinanceWrapper(BaseExchangeWrapper):
     def _make_exchange_name(self, base_currency_code, market_currency_code):
         return '{0}{1}'.format(market_currency_code, base_currency_code)
 
+    def _split_sumbol(self, symbol):
+        for base_code, markets in self._markets.items():
+            for market_code in markets:
+                if market_code + base_code == symbol:
+                    return (base_code, market_code)
+        raise ExchangeAPIException('Failed to decode symbol {0}'.format(symbol))
+
     def _load_markets(self):
         names = self._load_names()
         result = self._perform_request(lambda: self._handle.get_exchange_info())
@@ -88,6 +95,31 @@ class BinanceWrapper(BaseExchangeWrapper):
         if currency_code not in self._currencies:
             raise InvalidArgumentException('Invalid currency {0}'.format(currency_code))
         return self._currencies[currency_code]
+
+    def get_open_orders(self):
+        result = self._perform_request(lambda: self._handle.get_open_orders())
+        output = []
+        for item in result:
+            base_code, market_code = self._split_sumbol(item['symbol'])
+            amount = float(item['origQty'])
+            output.append(TradeOrder(
+                item["orderId"],
+                self._currencies[base_code],
+                self._currencies[market_code],
+                dateparser.parse(str(item["time"])),
+                None,
+                amount,
+                amount - float(item["executedQty"]),
+                float(item["price"]),
+                float(item["price"]),
+                OrderType.limit_buy if item["side"] == "BUY" else OrderType.limit_sell
+            ))
+        return output
+
+    def cancel_order(self, base_currency_code, market_currency_code, order_id):
+        exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
+        result = self._perform_request(lambda: self._handle.cancel_order(symbol=exchange_name,
+                                                                         orderId=order_id))
 
     def get_market_state(self, base_currency_code, market_currency_code):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
@@ -173,14 +205,14 @@ class BinanceWrapper(BaseExchangeWrapper):
         result = self._perform_request(lambda: self._handle.order_limit_buy(symbol=exchange_name,
                                                                             quantity=amount,
                                                                             price=rate))
-        return result['clientOrderId']
+        return result['orderId']
 
     def sell(self, base_currency_code, market_currency_code, amount, rate):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
         result = self._perform_request(lambda: self._handle.order_limit_sell(symbol=exchange_name,
                                                                              quantity=amount,
                                                                              price=rate))
-        return result['clientOrderId']
+        return result['orderId']
 
     def get_deposit_address(self, currency_code):
         result = self._perform_request(lambda: self._handle.get_deposit_address(asset=currency_code))

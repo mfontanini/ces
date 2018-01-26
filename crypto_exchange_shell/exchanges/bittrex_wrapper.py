@@ -229,7 +229,7 @@ class BittrexWrapper(BaseExchangeWrapper):
             ))
         return output
 
-    def cancel_order(self, order_id):
+    def cancel_order(self, base_currency_code, market_currency_code, order_id):
         result = self._handle.cancel(order_id)
         self._check_result(result)
 

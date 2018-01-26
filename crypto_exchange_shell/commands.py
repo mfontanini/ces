@@ -27,9 +27,11 @@
 
 import utils
 import sys
+import re
 from terminaltables import AsciiTable
 from exceptions import *
 from models import CandleTicks
+from simpleeval import simple_eval
 
 class BaseCommand:
     def __init__(self, name, usage_template, short_usage_string, parse_args=True):
@@ -69,6 +71,9 @@ class BaseCommand:
 
     def format_date(self, datetime):
         return datetime.strftime("%Y-%m-%d %H:%M:%S")
+
+    def split_args(self, raw_params):
+        return filter(lambda i: len(i) > 0, raw_params.strip().split(' '))
 
 class MarketsCommand(BaseCommand):
     SHORT_USAGE_STRING = 'list the available markets'
@@ -361,7 +366,7 @@ orders open'''
 
 class CancelOrderCommand(BaseCommand):
     SHORT_USAGE_STRING = 'cancel an order'
-    USAGE_TEMPLATE_STRING = '''{0} <order-id>
+    USAGE_TEMPLATE_STRING = '''{0} <base-currency> <market-currency> <order-id>
 Cancel the buy/sell order with id <order-id>
 
 For example:
@@ -372,14 +377,18 @@ cancel 8e84a510-fcd3-11e7-8be5-0ed5f89f718b'''
         BaseCommand.__init__(self, 'cancel', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
 
     def execute(self, core, params):
-        self.ensure_parameter_count(params, 1)
-        order_id = params[0]
-        core.exchange_handle.cancel_order(order_id)
+        self.ensure_parameter_count(params, 3)
+        base_currency_code = params[0]
+        market_currency_code = params[1]
+        order_id = params[2]
+        core.exchange_handle.cancel_order(base_currency_code, market_currency_code, order_id)
         print 'Successfully cancelled order {0}'.format(order_id)
 
     def generate_parameters(self, core, current_parameters):
-        if len(current_parameters) == 0:
-            return map(lambda i: i.order_id, core.exchange_handle.get_open_orders())
+        if len(current_parameters) < 2:
+            return self.generate_markets_parameters(core, current_parameters)
+        if len(current_parameters) == 2:
+            return map(lambda i: str(i.order_id), core.exchange_handle.get_open_orders())
         return []
 
 class SellCommand(BaseCommand):
@@ -400,14 +409,32 @@ Another example, selling all of our units of ETH at 1 BTC each:
 sell BTC ETH max 1'''
 
     def __init__(self):
-        BaseCommand.__init__(self, 'sell', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
+        BaseCommand.__init__(self, 'sell', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING,
+                             parse_args=False)
 
-    def execute(self, core, params):
-        self.ensure_parameter_count(params, 4)
+    def execute(self, core, raw_params):
+        raw_params = re.sub(' +', ' ', raw_params)
+        params = self.split_args(raw_params)
+        if len(params) < 4:
+            raise ParameterCountException(self.name, 4)
         base_currency_code = params[0]
         market_currency_code = params[1]
         amount = params[2]
-        rate = float(params[3])
+        # Get the expression and evaluate it
+        index = len(' '.join(params[:3]) + ' ')
+        expression = raw_params[index:]
+        market_state = core.exchange_handle.get_market_state(
+            base_currency_code,
+            market_currency_code
+        )
+        try:
+            names = {
+                'price' : market_state.last,
+                'ask' : market_state.ask
+            }
+            rate = simple_eval(expression, names=names)
+        except Exception as ex:
+            raise CommandExecutionException('Failed to evaluate expression: {0}'.format(ex))
         wallet = core.exchange_handle.get_wallet(market_currency_code)
         if amount == 'max':
             amount = wallet.available
@@ -534,7 +561,7 @@ withdraw XLM max C5JF5BT5VZIE this is my memo'''
                              self.SHORT_USAGE_STRING, parse_args=False)
 
     def execute(self, core, raw_params):
-        split_params = filter(lambda i: len(i) > 0, raw_params.strip().split(' '))
+        split_params = self.split_args(raw_params)
         if len(split_params) < 3:
             raise ParameterCountException(self.name, 3)
         currency = core.exchange_handle.get_currency(split_params[0])
