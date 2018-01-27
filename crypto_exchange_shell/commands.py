@@ -34,20 +34,25 @@ from models import CandleTicks
 from simpleeval import simple_eval
 
 class BaseCommand:
-    def __init__(self, name, usage_template, short_usage_string, parse_args=True):
+    def __init__(self, name, help_template, short_usage_string=None, parse_args=True):
         self.name = name
         self.parse_args = parse_args
-        self.usage_template = usage_template
+        self.help_template = help_template
         self.short_usage_string = short_usage_string
 
     def usage(self):
-        output = self.usage_template.format(self.name)
-        output = output.split('\n')
-        output = [output[0]] + ['-' * len(output[0])] + output[1:]
-        return '\n'.join(output)
+        data = [
+            ['Usage', self.help_template['usage'].format(self.name)],
+            ['Description', self.help_template['long_description'].format(self.name)],
+        ]
+        if 'examples' in self.help_template:
+            data.append(['Examples', self.help_template['examples'].format(self.name)])
+        table = AsciiTable(data, self.name)
+        table.inner_row_border = True
+        return table.table
 
     def short_usage(self):
-        return self.short_usage_string
+        return self.help_template['short_description']
 
     def execute(self, core, params):
         pass
@@ -76,19 +81,20 @@ class BaseCommand:
         return filter(lambda i: len(i) > 0, raw_params.strip().split(' '))
 
 class MarketsCommand(BaseCommand):
-    SHORT_USAGE_STRING = 'list the available markets'
-    USAGE_TEMPLATE_STRING = '''{0} [base-currency]
-List the available markets. When executed with no parameters,
+    HELP_TEMPLATE = {
+        'usage' : '{0} [base-currency]',
+        'short_description' : 'list the available markets',
+        'long_description' : '''List the available markets. When executed with no parameters,
 this will print the base currencies that can be used. When
 a base currency is provided, the markets for that currency
-will be displayed.
+will be displayed.''',
+        'examples' : '''Print the available markets for BTC (e.g. all BTC/X pairs):
 
-For example, print the available markets for BTC (e.g. all BTC/X pairs):
-
-markets BTC'''
+{0} BTC'''
+    }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'markets', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
+        BaseCommand.__init__(self, 'markets', self.HELP_TEMPLATE)
 
     def execute(self, core, params):
         if len(params) == 0:
@@ -115,17 +121,18 @@ markets BTC'''
         return []
 
 class MarketStateCommand(BaseCommand):
-    SHORT_USAGE_STRING = 'get the market prices'
-    USAGE_TEMPLATE_STRING = '''{0} <base-currency> <market-currency>
-Get the price at which the market <base-currency>/<market-currency>
-is operating.
+    HELP_TEMPLATE = {
+        'usage' : '{0} <base-currency> <market-currency>',
+        'short_description' : 'get the market prices',
+        'long_description' : '''Get the price at which the market <base-currency>/<market-currency>
+is operating. ''',
+        'examples' : '''Print the state of the BTC/XLM market:
 
-For example, print the state of the BTC/XLM market:
-
-market BTC XLM'''
+{0} BTC XLM'''
+    }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'market', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
+        BaseCommand.__init__(self, 'market', self.HELP_TEMPLATE)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 2)
@@ -149,17 +156,17 @@ market BTC XLM'''
 class OrderbookCommand(BaseCommand):
     MAX_LINES = 10
     BASE_ROW_FORMAT = '{{:<{0}}} | {{:<{1}}}'
-    SHORT_USAGE_STRING = 'get a market\'s orderbook'
-    USAGE_TEMPLATE_STRING = '''{0} <base-currency> <market-currency>
-Get the orderbook for the market <base-currency>/<market-currency>.
+    HELP_TEMPLATE = {
+        'usage' : '{0} <base-currency> <market-currency>',
+        'short_description' : 'get a market\'s orderbook',
+        'long_description' : 'Get the orderbook for the market <base-currency>/<market-currency>',
+        'examples' : '''Print the orderbook of the BTC/XLM market:
 
-For example, print the orderbook of the BTC/XLM market:
-
-market BTC XLM'''
+{0} BTC XLM'''
+    }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'orderbook', self.USAGE_TEMPLATE_STRING,
-                             self.SHORT_USAGE_STRING)
+        BaseCommand.__init__(self, 'orderbook', self.HELP_TEMPLATE)
 
     def _make_columns(self, order, base_currency_code, market_currency_code, price):
         return [
@@ -193,12 +200,14 @@ market BTC XLM'''
         return self.generate_markets_parameters(core, current_parameters)
 
 class WalletsCommand(BaseCommand):
-    SHORT_USAGE_STRING = 'get the wallets and their balances'
-    USAGE_TEMPLATE_STRING = '''{0}
-Get all wallets. This will filter out the ones with no balance.'''
+    HELP_TEMPLATE = {
+        'usage' : '{0}',
+        'short_description' : 'get the wallets and their balances',
+        'long_description' : 'Get all wallets. This will filter out the ones with no balance'
+    }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'wallets', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
+        BaseCommand.__init__(self, 'wallets', self.HELP_TEMPLATE)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 0)
@@ -225,16 +234,17 @@ Get all wallets. This will filter out the ones with no balance.'''
         return []
 
 class WalletCommand(BaseCommand):
-    SHORT_USAGE_STRING = 'get the balance for a specific wallet'
-    USAGE_TEMPLATE_STRING = '''{0} <currency>
-Get the wallet information for <currency>.
+    HELP_TEMPLATE = {
+        'usage' : '{0} <currency>',
+        'short_description' : 'get the balance for a specific wallet',
+        'long_description' : 'Get the wallet information for <currency>',
+        'examples' : '''Print the XLM wallet balance:
 
-For example, print the XLM wallet balance:
-
-market XLM'''
+{0} XLM'''
+    }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'wallet', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
+        BaseCommand.__init__(self, 'wallet', self.HELP_TEMPLATE)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 1)
@@ -256,12 +266,14 @@ market XLM'''
         return []
 
 class DepositsCommand(BaseCommand):
-    SHORT_USAGE_STRING = 'get the deposits made'
-    USAGE_TEMPLATE_STRING = '''{0}
-Get the list of deposits made into wallets of this account.'''
+    HELP_TEMPLATE = {
+        'usage' : '{0}',
+        'short_description' : 'get the deposits made',
+        'long_description' : 'Get the list of deposits made into wallets of this account'
+    }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'deposits', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
+        BaseCommand.__init__(self, 'deposits', self.HELP_TEMPLATE)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 0)
@@ -288,13 +300,14 @@ Get the list of deposits made into wallets of this account.'''
         return []
 
 class WithdrawalsCommand(BaseCommand):
-    SHORT_USAGE_STRING = 'get the withdrawals made'
-    USAGE_TEMPLATE_STRING = '''{0}
-Get the list of withdrawals made into wallets of this account.'''
+    HELP_TEMPLATE = {
+        'usage' : '{0}',
+        'short_description' : 'get the withdrawals made',
+        'long_description' : 'Get the list of withdrawals made into wallets of this account'
+    }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'withdrawals', self.USAGE_TEMPLATE_STRING,
-                             self.SHORT_USAGE_STRING)
+        BaseCommand.__init__(self, 'withdrawals', self.HELP_TEMPLATE)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 0)
@@ -316,17 +329,18 @@ Get the list of withdrawals made into wallets of this account.'''
         return []
 
 class OrdersCommand(BaseCommand):
-    SHORT_USAGE_STRING = 'get the active and settled orders'
-    USAGE_TEMPLATE_STRING = '''{0} <open|completed>
-Get the list of orders either completed or open depending
-on the parameter used.
+    HELP_TEMPLATE = {
+        'usage' : '{0} <open|completed>',
+        'short_description' : 'get the active and settled orders',
+        'long_description' : '''Get the list of orders either completed or open depending
+on the parameter used''',
+        'examples' : '''Print the list of all open orders:
 
-For example, print the list of all open orders:
-
-orders open'''
+{0} open'''
+    }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'orders', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
+        BaseCommand.__init__(self, 'orders', self.HELP_TEMPLATE)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 1)
@@ -365,16 +379,18 @@ orders open'''
         return []
 
 class CancelOrderCommand(BaseCommand):
-    SHORT_USAGE_STRING = 'cancel an order'
-    USAGE_TEMPLATE_STRING = '''{0} <base-currency> <market-currency> <order-id>
-Cancel the buy/sell order with id <order-id>
+    HELP_TEMPLATE = {
+        'usage' : '{0} <base-currency> <market-currency> <order-id>',
+        'short_description' : 'cancel an order',
+        'long_description' : '''Cancel the buy/sell order with id <order-id> which was posted
+on the market <base-currency>/<market-currency>''',
+        'examples' : '''Cancel an order posted in the ETH/BTC market:
 
-For example:
-
-cancel 8e84a510-fcd3-11e7-8be5-0ed5f89f718b'''
+{0} ETH BTC 8e84a510-fcd3-11e7-8be5-0ed5f89f718b'''
+    }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'cancel', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
+        BaseCommand.__init__(self, 'cancel', self.HELP_TEMPLATE)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 3)
@@ -438,24 +454,30 @@ class PlaceOrderBaseCommand(BaseCommand):
         return amount
 
 class SellCommand(PlaceOrderBaseCommand):
-    SHORT_USAGE_STRING = 'place a sell order'
-    USAGE_TEMPLATE_STRING = '''{0} <base-currency> <market-currency> amount <amount|max> rate <rate>
-Create a sell order for <amount> coins at rate <rate> in the market <base-currency>/<market-currency>.
+    HELP_TEMPLATE = {
+        'usage' : '{0} <base-currency> <market-currency> amount <amount|max> rate <rate>',
+        'short_description' : 'place a sell order',
+        'long_description' : '''Create a sell order for <amount> coins at rate <rate> in
+the market <base-currency>/<market-currency>.
 
-If the amount given is "max" then all of the coins in the wallet for <market-currency> will be put in the order.
-<rate> can be an expression. The "market" and "ask" constants can be used which will contain the latest market and ask prices in this market.
+If the amount given is "max" then all of the coins in the wallet
+for <market-currency> will be put in the order.
 
-For example, sell 100 units of XLM at 10% more than what the latest ask price is in the BTC market:
+<rate> can be an expression. The "market" and "ask" constants can
+be used which will contain the latest market and ask prices in this
+market.''',
+        'examples' : '''Sell 100 units of XLM at 10% more than what the latest ask
+price is in the BTC market:
 
 sell BTC XLM amount 100 rate 1.10 * ask
 
 Another example, selling all of our units of ETH at 1 BTC each:
 
-sell BTC ETH amount max rate 1'''
+{0} BTC ETH amount max rate 1'''
+    }
 
     def __init__(self):
-        PlaceOrderBaseCommand.__init__(self, 'sell', self.USAGE_TEMPLATE_STRING,
-                                       self.SHORT_USAGE_STRING, parse_args=False)
+        PlaceOrderBaseCommand.__init__(self, 'sell', self.HELP_TEMPLATE, parse_args=False)
 
     def execute(self, core, raw_params):
         base_currency_code, market_currency_code, amount, expression = self.parse_parameters(raw_params)
@@ -498,24 +520,30 @@ sell BTC ETH amount max rate 1'''
             print 'Operation cancelled'
 
 class BuyCommand(PlaceOrderBaseCommand):
-    SHORT_USAGE_STRING = 'place a buy order'
-    USAGE_TEMPLATE_STRING = '''{0} <base-currency> <market-currency> amount <amount|max> rate <rate>
-Create a buy order for <amount> coins at rate <rate> in the market <base-currency>/<market-currency>.
+    HELP_TEMPLATE = {
+        'usage' : '{0} <base-currency> <market-currency> amount <amount|max> rate <rate>',
+        'short_description' : 'place a buy order',
+        'long_description' : '''Create a buy order for <amount> coins at rate <rate> in
+the market <base-currency>/<market-currency>.
 
-If the amount given is "max" then all of the coins in the wallet for <base-currency> will be put in the order.
-<rate> can be an expression. The "market" and "bid" constants can be used which will contain the latest market and bid prices in this market.
+If the amount given is "max" then all of the coins in the wallet
+for <base-currency> will be put in the order.
 
-For example, buy 100 units of XLM at 90% of what the latest bid price in the BTC market:
+<rate> can be an expression. The "market" and "bid" constants can
+be used which will contain the latest market and bid prices in
+this market.''',
+        'examples' : '''Buy 100 units of XLM at 90% of what the latest bid
+price in the BTC market:
 
 buy BTC XLM amount 100 rate 0.9 * bid
 
 Another example, buying all of our units of ETH at 1 BTC each:
 
-buy BTC ETH amount max rate 1'''
+{0} BTC ETH amount max rate 1'''
+    }
 
     def __init__(self):
-        PlaceOrderBaseCommand.__init__(self, 'buy', self.USAGE_TEMPLATE_STRING,
-                                       self.SHORT_USAGE_STRING, parse_args=False)
+        PlaceOrderBaseCommand.__init__(self, 'buy', self.HELP_TEMPLATE, parse_args=False)
 
     def execute(self, core, raw_params):
         base_currency_code, market_currency_code, amount, expression = self.parse_parameters(raw_params)
@@ -558,20 +586,25 @@ buy BTC ETH amount max rate 1'''
             print 'Operation cancelled'
 
 class WithdrawCommand(BaseCommand):
-    SHORT_USAGE_STRING = 'withdraw funds'
-    USAGE_TEMPLATE_STRING = '''{0} <currency> <amount|max> <address> [address-tag]
-Withdraw <amount> funds from the <currency> wallet into
+    HELP_TEMPLATE = {
+        'usage' : '{0} <currency> <amount|max> <address> [address-tag]',
+        'short_description' : 'withdraw funds',
+        'long_description' : '''Withdraw <amount> funds from the <currency> wallet into
 a wallet with address <address>.
 
-If <amount> is "max", then the entire contents of the
-wallet are withdrawn.
+If <amount> is "max", then the entire contents of the wallet
+are withdrawn.
 
 For currencies that support a memo/payment id like XLM and
-XMR, use the <address-tag> for this field.
+XMR, use the <address-tag> for this field.''',
+        'examples' : '''Withdraw all of the XLM funds using a memo:
 
-For example, withdraw all of the XLM funds using a memo:
+{0} XLM max C5JF5BT5VZIE this is my memo
 
-withdraw XLM max C5JF5BT5VZIE this is my memo'''
+Another example, 1 BTC:
+
+{0} BTC 1 1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2'''
+    }
 
     ADDRESS_TAG_NAME = {
         'XLM' : 'Memo text',
@@ -581,8 +614,7 @@ withdraw XLM max C5JF5BT5VZIE this is my memo'''
 
     def __init__(self):
         # For the memo/payment id we don't want parsing, we'll handle that ourselves
-        BaseCommand.__init__(self, 'withdraw', self.USAGE_TEMPLATE_STRING,
-                             self.SHORT_USAGE_STRING, parse_args=False)
+        BaseCommand.__init__(self, 'withdraw', self.HELP_TEMPLATE, parse_args=False)
 
     def execute(self, core, raw_params):
         split_params = self.split_args(raw_params)
@@ -643,19 +675,20 @@ withdraw XLM max C5JF5BT5VZIE this is my memo'''
         return []
 
 class UsageCommand(BaseCommand):
-    SHORT_USAGE_STRING = 'print command\'s usage'
-    USAGE_TEMPLATE_STRING = '''{0} <command>
-Print the usage for <command>.
+    HELP_TEMPLATE = {
+        'usage' : '{0} <command>',
+        'short_description' : 'print command\'s usage',
+        'long_description' : '''Print the usage for <command>.
 
 Note that elements inside <> are mandatory while the ones
-inside [] are optional
+inside [] are optional.''',
+        'examples' : '''Print the usage for the withdraw command:
 
-For example:
-
-usage withdraw'''
+{0} withdraw'''
+    }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'usage', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
+        BaseCommand.__init__(self, 'usage', self.HELP_TEMPLATE)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 1)
@@ -667,12 +700,14 @@ usage withdraw'''
         return []
 
 class HelpCommand(BaseCommand):
-    SHORT_USAGE_STRING = 'print this help message'
-    USAGE_TEMPLATE_STRING = '''{0}
-Print a help message'''
+    HELP_TEMPLATE = {
+        'usage' : '{0}',
+        'short_description' : 'print this help message',
+        'long_description' : 'Print a help message'
+    }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'help', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
+        BaseCommand.__init__(self, 'help', self.HELP_TEMPLATE)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 0)
@@ -686,17 +721,17 @@ Print a help message'''
         return []
 
 class DepositAddressCommand(BaseCommand):
-    SHORT_USAGE_STRING = 'get the deposit address for a currency'
-    USAGE_TEMPLATE_STRING = '''{0} <currency>
-Print the withdraw address for a specific currency.
-
-For example:
+    HELP_TEMPLATE = {
+        'usage' : '{0} <currency>',
+        'short_description' : 'get the deposit address for a currency',
+        'long_description' : 'Print the withdraw address for a specific currency.',
+        'examples' : '''Get the deposit address for XLM:
 
 {0} XLM'''
+    }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'deposit_address', self.USAGE_TEMPLATE_STRING,
-                             self.SHORT_USAGE_STRING)
+        BaseCommand.__init__(self, 'deposit_address', self.HELP_TEMPLATE)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 1)
@@ -718,12 +753,22 @@ For example:
         return []
 
 class CandlesCommand(BaseCommand):
+    HELP_TEMPLATE = {
+        'usage' : '{0} <base-currency> <market-currency> <interval>',
+        'short_description' : 'fetch the price candles for a market',
+        'long_description' : '''Fetch the price candles for the market <base-currency>/<market-currency>
+
+The <interval> parameter must be one of one_minute, five_minutes,
+thirty_minutes, one_hour and one_day.''',
+        'examples' : '''Print the candles using a one hour interval for the
+BTC/XLM market:
+
+{0} BTC XLM one_hour'''
+    }
     SAMPLE_COUNT = 50
-    SHORT_USAGE_STRING = 'fetch the candles for a market'
-    USAGE_TEMPLATE_STRING = ''''''
 
     def __init__(self):
-        BaseCommand.__init__(self, 'candles', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
+        BaseCommand.__init__(self, 'candles', self.HELP_TEMPLATE)
 
     def execute(self, core, params):
         self.ensure_parameter_count(params, 3)
@@ -808,27 +853,26 @@ class CandlesCommand(BaseCommand):
 
 class CommandManager:
     def __init__(self):
-        self._commands = {
-            'market' : MarketStateCommand(),
-            'markets' : MarketsCommand(),
-            'orderbook' : OrderbookCommand(),
-            'wallets' : WalletsCommand(),
-            'wallet' : WalletCommand(),
-            'deposits' : DepositsCommand(),
-            'withdrawals' : WithdrawalsCommand(),
-            'orders' : OrdersCommand(),
-            'cancel' : CancelOrderCommand(),
-            'sell' : SellCommand(),
-            'buy' : BuyCommand(),
-            'withdraw' : WithdrawCommand(),
-            'deposit_address' : DepositAddressCommand(),
-            'candles' : CandlesCommand(),
-            'usage' : UsageCommand(),
-            'help' : HelpCommand(),
-        }
+        self._commands = {}
+        self.add_command(MarketStateCommand())
+        self.add_command(MarketsCommand())
+        self.add_command(OrderbookCommand())
+        self.add_command(WalletsCommand())
+        self.add_command(WalletCommand())
+        self.add_command(DepositsCommand())
+        self.add_command(WithdrawalsCommand())
+        self.add_command(OrdersCommand())
+        self.add_command(CancelOrderCommand())
+        self.add_command(SellCommand())
+        self.add_command(BuyCommand())
+        self.add_command(WithdrawCommand())
+        self.add_command(DepositAddressCommand())
+        self.add_command(CandlesCommand())
+        self.add_command(UsageCommand())
+        self.add_command(HelpCommand())
 
-    def add_command(self, name, command):
-        self._commands[name] = command
+    def add_command(self, command):
+        self._commands[command.name] = command
 
     def execute(self, handle, command, parameters):
         if command not in self._commands:
