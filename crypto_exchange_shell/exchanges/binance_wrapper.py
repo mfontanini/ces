@@ -222,12 +222,13 @@ class BinanceWrapper(BaseExchangeWrapper):
             result.get('addresTag', None)
         )
 
-    def get_candles(self, base_currency_code, market_currency_code, interval):
+    def get_candles(self, base_currency_code, market_currency_code, interval, limit):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
         result = self._perform_request(lambda:
             self._handle.get_klines(
                 symbol=exchange_name,
-                interval=BinanceWrapper.INTERVAL_MAP[interval]
+                interval=BinanceWrapper.INTERVAL_MAP[interval],
+                limit=limit
             )
         )
         output = []

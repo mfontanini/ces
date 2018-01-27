@@ -736,7 +736,8 @@ class CandlesCommand(BaseCommand):
         candles = core.exchange_handle.get_candles(
             base_currency_code,
             market_currency_code,
-            interval
+            interval,
+            CandlesCommand.SAMPLE_COUNT
         )
         candles = candles[-CandlesCommand.SAMPLE_COUNT:]
         lowest = None
@@ -757,14 +758,19 @@ class CandlesCommand(BaseCommand):
             top = max(open_value, close_value)
             bottom = min(open_value, close_value)
             column = []
+            total_written = 0
             for i in range(height):
                 value = i / float(height)
                 if value >= bottom and value <= top:
                     column.append(u'\u028C' if close_value > open_value else 'v')
+                    total_written += 1
                 elif value > low_value and value < high_value:
                     column.append(u'\u00A6')
+                    total_written += 1
                 else:
                     column.append(' ')
+            if total_written == 0:
+                column[int(high_value * (height - 1))] = u'\u00A6'
             column.reverse()
             matrix.append(column)
 

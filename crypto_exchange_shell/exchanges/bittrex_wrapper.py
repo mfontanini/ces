@@ -287,7 +287,7 @@ class BittrexWrapper(BaseExchangeWrapper):
             address_tag
         )
 
-    def get_candles(self, base_currency_code, market_currency_code, interval):
+    def get_candles(self, base_currency_code, market_currency_code, interval, limit):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
         result = self._handle_v2.get_candles(
             exchange_name,
@@ -295,7 +295,7 @@ class BittrexWrapper(BaseExchangeWrapper):
         )
         self._check_result(result)
         output = []
-        for i in result['result']:
+        for i in result['result'][-limit:]:
             output.append(Candle(
                 i["L"],
                 i["H"],
@@ -303,4 +303,5 @@ class BittrexWrapper(BaseExchangeWrapper):
                 i["C"],
                 utils.datetime_from_utc_time(i["T"])
             ))
+        print 'Iterated'
         return output
