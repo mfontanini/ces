@@ -393,43 +393,54 @@ cancel 8e84a510-fcd3-11e7-8be5-0ed5f89f718b'''
 
 class SellCommand(BaseCommand):
     SHORT_USAGE_STRING = 'place a sell order'
-    USAGE_TEMPLATE_STRING = '''{0} <base-currency> <market-currency> <amount|max> <rate>
-Create a sell order for <amount> coins at rate <rate> in
-the market <base-currency>/<market-currency>.
+    USAGE_TEMPLATE_STRING = '''{0} <base-currency> <market-currency> amount <amount|max> rate <rate>
+Create a sell order for <amount> coins at rate <rate> in the market <base-currency>/<market-currency>.
 
-If the amount given is "max" then all of the coins in the wallet
-for <market-currency> will be put in the order.
+If the amount given is "max" then all of the coins in the wallet for <market-currency> will be put in the order.
+<rate> can be an expression. The "market" and "ask" constants can be used which will contain the latest market and ask prices in this market.
 
-For example, sell 100 units of XLM at 0.1 BTC each:
+For example, sell 100 units of XLM at 10% more than what the latest ask price is:
 
-sell BTC XLM 100 0.1
+sell BTC XLM amount 100 rate 1.10 * ask
 
 Another example, selling all of our units of ETH at 1 BTC each:
 
-sell BTC ETH max 1'''
+sell BTC ETH amount max rate 1'''
 
     def __init__(self):
         BaseCommand.__init__(self, 'sell', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING,
                              parse_args=False)
 
-    def execute(self, core, raw_params):
+    def parse_parameters(self, raw_params):
         raw_params = re.sub(' +', ' ', raw_params)
         params = self.split_args(raw_params)
         if len(params) < 4:
             raise ParameterCountException(self.name, 4)
         base_currency_code = params[0]
         market_currency_code = params[1]
-        amount = params[2]
-        # Get the expression and evaluate it
-        index = len(' '.join(params[:3]) + ' ')
-        expression = raw_params[index:]
+        amount = None
+        expression = None
+        for i in range(2, len(params)):
+            if params[i] == 'amount':
+                if amount is not None:
+                    raise CommandExecutionException('"amount" provided more than once')
+                amount = params[i + 1]
+            elif params[i] == 'rate':
+                if expression is not None:
+                    raise CommandExecutionException('"rate" provided more than once')
+                index = len(' '.join(params[:i + 1]) + ' ')
+                expression = raw_params[index:]
+        return (base_currency_code, market_currency_code, amount, expression)
+
+    def execute(self, core, raw_params):
+        base_currency_code, market_currency_code, amount, expression = self.parse_parameters(raw_params)
         market_state = core.exchange_handle.get_market_state(
             base_currency_code,
             market_currency_code
         )
         try:
             names = {
-                'price' : market_state.last,
+                'market' : market_state.last,
                 'ask' : market_state.ask
             }
             rate = simple_eval(expression, names=names)
@@ -469,7 +480,9 @@ sell BTC ETH max 1'''
     def generate_parameters(self, core, current_parameters):
         if len(current_parameters) < 2:
             return self.generate_markets_parameters(core, current_parameters)
-        return []
+        options = ['amount', 'rate']
+        options = filter(lambda i: i not in current_parameters, options)
+        return options
 
 class BuyCommand(BaseCommand):
     SHORT_USAGE_STRING = 'place a buy order'
