@@ -391,26 +391,7 @@ cancel 8e84a510-fcd3-11e7-8be5-0ed5f89f718b'''
             return map(lambda i: str(i.order_id), core.exchange_handle.get_open_orders())
         return []
 
-class SellCommand(BaseCommand):
-    SHORT_USAGE_STRING = 'place a sell order'
-    USAGE_TEMPLATE_STRING = '''{0} <base-currency> <market-currency> amount <amount|max> rate <rate>
-Create a sell order for <amount> coins at rate <rate> in the market <base-currency>/<market-currency>.
-
-If the amount given is "max" then all of the coins in the wallet for <market-currency> will be put in the order.
-<rate> can be an expression. The "market" and "ask" constants can be used which will contain the latest market and ask prices in this market.
-
-For example, sell 100 units of XLM at 10% more than what the latest ask price is:
-
-sell BTC XLM amount 100 rate 1.10 * ask
-
-Another example, selling all of our units of ETH at 1 BTC each:
-
-sell BTC ETH amount max rate 1'''
-
-    def __init__(self):
-        BaseCommand.__init__(self, 'sell', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING,
-                             parse_args=False)
-
+class PlaceOrderBaseCommand(BaseCommand):
     def parse_parameters(self, raw_params):
         raw_params = re.sub(' +', ' ', raw_params)
         params = self.split_args(raw_params)
@@ -432,6 +413,50 @@ sell BTC ETH amount max rate 1'''
                 expression = raw_params[index:]
         return (base_currency_code, market_currency_code, amount, expression)
 
+    def generate_parameters(self, core, current_parameters):
+        if len(current_parameters) < 2:
+            return self.generate_markets_parameters(core, current_parameters)
+        options = ['amount', 'rate']
+        # e.g. don't return "rate" if the last argument is "amuont" 
+        if current_parameters[-1] in options:
+            return []
+        options = filter(lambda i: i not in current_parameters, options)
+        return options
+
+    def compute_amount(self, core, currency_code, amount):
+        wallet = core.exchange_handle.get_wallet(currency_code)
+        if amount == 'max':
+            amount = wallet.available
+        else:
+            amount = float(amount)
+        if amount > wallet.available:
+            if wallet.available == 0:
+                print '{0} wallet is empty'.format(currency_code)
+            else:
+                print 'Wallet only contains {0} {1}'.format(wallet.available, currency_code)
+            return None
+        return amount
+
+class SellCommand(PlaceOrderBaseCommand):
+    SHORT_USAGE_STRING = 'place a sell order'
+    USAGE_TEMPLATE_STRING = '''{0} <base-currency> <market-currency> amount <amount|max> rate <rate>
+Create a sell order for <amount> coins at rate <rate> in the market <base-currency>/<market-currency>.
+
+If the amount given is "max" then all of the coins in the wallet for <market-currency> will be put in the order.
+<rate> can be an expression. The "market" and "ask" constants can be used which will contain the latest market and ask prices in this market.
+
+For example, sell 100 units of XLM at 10% more than what the latest ask price is in the BTC market:
+
+sell BTC XLM amount 100 rate 1.10 * ask
+
+Another example, selling all of our units of ETH at 1 BTC each:
+
+sell BTC ETH amount max rate 1'''
+
+    def __init__(self):
+        PlaceOrderBaseCommand.__init__(self, 'sell', self.USAGE_TEMPLATE_STRING,
+                                       self.SHORT_USAGE_STRING, parse_args=False)
+
     def execute(self, core, raw_params):
         base_currency_code, market_currency_code, amount, expression = self.parse_parameters(raw_params)
         market_state = core.exchange_handle.get_market_state(
@@ -446,13 +471,8 @@ sell BTC ETH amount max rate 1'''
             rate = simple_eval(expression, names=names)
         except Exception as ex:
             raise CommandExecutionException('Failed to evaluate expression: {0}'.format(ex))
-        wallet = core.exchange_handle.get_wallet(market_currency_code)
-        if amount == 'max':
-            amount = wallet.available
-        else:
-            amount = float(amount)
-        if amount > wallet.available:
-            print 'Wallet only contains {0} {1}'.format(wallet.available, market_currency_code)
+        amount = self.compute_amount(core, market_currency_code, amount)
+        if amount is None:
             return
         price = core.price_db.get_currency_price(base_currency_code)
         data = [
@@ -477,46 +497,42 @@ sell BTC ETH amount max rate 1'''
         else:
             print 'Operation cancelled'
 
-    def generate_parameters(self, core, current_parameters):
-        if len(current_parameters) < 2:
-            return self.generate_markets_parameters(core, current_parameters)
-        options = ['amount', 'rate']
-        options = filter(lambda i: i not in current_parameters, options)
-        return options
-
-class BuyCommand(BaseCommand):
+class BuyCommand(PlaceOrderBaseCommand):
     SHORT_USAGE_STRING = 'place a buy order'
-    USAGE_TEMPLATE_STRING = '''{0} <base-currency> <market-currency> <amount|max> <rate>
-Create a buy order for <amount> coins at rate <rate> in
-the market <base-currency>/<market-currency>.
+    USAGE_TEMPLATE_STRING = '''{0} <base-currency> <market-currency> amount <amount|max> rate <rate>
+Create a buy order for <amount> coins at rate <rate> in the market <base-currency>/<market-currency>.
 
-If the amount given is "max" then all of the coins in the wallet
-for <base-currency> will be put in the order.
+If the amount given is "max" then all of the coins in the wallet for <base-currency> will be put in the order.
+<rate> can be an expression. The "market" and "bid" constants can be used which will contain the latest market and bid prices in this market.
 
-For example, buy 100 units of XLM at 0.1 BTC each:
+For example, buy 100 units of XLM at 90% of what the latest bid price in the BTC market:
 
-buy BTC XLM 100 0.1
+buy BTC XLM amount 100 rate 0.9 * bid
 
 Another example, buying all of our units of ETH at 1 BTC each:
 
-buy BTC ETH max 1'''
+buy BTC ETH amount max rate 1'''
 
     def __init__(self):
-        BaseCommand.__init__(self, 'buy', self.USAGE_TEMPLATE_STRING, self.SHORT_USAGE_STRING)
+        PlaceOrderBaseCommand.__init__(self, 'buy', self.USAGE_TEMPLATE_STRING,
+                                       self.SHORT_USAGE_STRING, parse_args=False)
 
-    def execute(self, core, params):
-        self.ensure_parameter_count(params, 4)
-        base_currency_code = params[0]
-        market_currency_code = params[1]
-        amount = params[2]
-        rate = float(params[3])
-        wallet = core.exchange_handle.get_wallet(base_currency_code)
-        if amount == 'max':
-            amount = wallet.available
-        else:
-            amount = float(amount)
-        if amount > wallet.available:
-            print 'Wallet only contains {0} {1}'.format(wallet.available, base_currency_code)
+    def execute(self, core, raw_params):
+        base_currency_code, market_currency_code, amount, expression = self.parse_parameters(raw_params)
+        market_state = core.exchange_handle.get_market_state(
+            base_currency_code,
+            market_currency_code
+        )
+        try:
+            names = {
+                'market' : market_state.last,
+                'bid' : market_state.bid
+            }
+            rate = simple_eval(expression, names=names)
+        except Exception as ex:
+            raise CommandExecutionException('Failed to evaluate expression: {0}'.format(ex))
+        amount = self.compute_amount(core, base_currency_code, amount)
+        if amount is None:
             return
         price = core.price_db.get_currency_price(base_currency_code)
         data = [
@@ -540,11 +556,6 @@ buy BTC ETH max 1'''
             print 'Successfully posted order with id: {0}'.format(order_id)
         else:
             print 'Operation cancelled'
-
-    def generate_parameters(self, core, current_parameters):
-        if len(current_parameters) < 2:
-            return self.generate_markets_parameters(core, current_parameters)
-        return []
 
 class WithdrawCommand(BaseCommand):
     SHORT_USAGE_STRING = 'withdraw funds'
