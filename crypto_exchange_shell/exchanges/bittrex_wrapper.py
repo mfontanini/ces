@@ -303,5 +303,4 @@ class BittrexWrapper(BaseExchangeWrapper):
                 i["C"],
                 utils.datetime_from_utc_time(i["T"])
             ))
-        print 'Iterated'
         return output

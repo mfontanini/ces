@@ -38,15 +38,15 @@ from Crypto import Random
 from dateutil.tz import tzutc, tzlocal
 from models import CandleTicks
 
-def format_float(number_format, number):
+def format_float(number, number_format = '{0:.8f}'):
     # Format it, then remove right zeroes and remove dot if all decimals are gone
     return number_format.format(number).rstrip('0').rstrip('.')
 
 def make_price_string(base_currency_price, base_currency_code, currency_price):
     return '{0} {1} (${2})'.format(
-        format_float('{0:.8f}', base_currency_price),
+        format_float(base_currency_price, '{0:.8f}'),
         base_currency_code,
-        format_float('{0:.4f}', currency_price * base_currency_price)
+        format_float(currency_price * base_currency_price, '{0:.4f}')
     )
 
 def make_table_rows(title, table_data):

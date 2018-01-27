@@ -32,6 +32,7 @@ from terminaltables import AsciiTable
 from exceptions import *
 from models import CandleTicks
 from simpleeval import simple_eval
+from exchanges.base_exchange_wrapper import OrderInvalidity
 
 class BaseCommand:
     def __init__(self, name, help_template, short_usage_string=None, parse_args=True):
@@ -73,6 +74,20 @@ class BaseCommand:
     def ensure_parameter_count(self, params, expected):
         if len(params) != expected:
             raise ParameterCountException(self.name, expected)
+
+    def ensure_parameter_count_between(self, params, minimum, maximum):
+        if len(params) < minimum:
+            raise ParameterCountException(
+                self.name,
+                minimum,
+                expectation=ParameterCountException.Expectation.at_least
+            )
+        elif len(params) > maximum:
+            raise ParameterCountException(
+                self.name,
+                maximum,
+                expectation=ParameterCountException.Expectation.at_most
+            )
 
     def format_date(self, datetime):
         return datetime.strftime("%Y-%m-%d %H:%M:%S")
@@ -370,8 +385,12 @@ on the parameter used''',
             title = 'Completed orders'
         else:
             raise CommandExecutionException('Invalid order type "{0}"'.format(order_type))
-        table = AsciiTable(data, title)
-        print table.table
+        # If we only have the titles
+        if len(data) == 1:
+            print 'No open orders found'
+        else:
+            table = AsciiTable(data, title)
+            print table.table
 
     def generate_parameters(self, core, current_parameters):
         if len(current_parameters) == 0:
@@ -427,6 +446,10 @@ class PlaceOrderBaseCommand(BaseCommand):
                     raise CommandExecutionException('"rate" provided more than once')
                 index = len(' '.join(params[:i + 1]) + ' ')
                 expression = raw_params[index:]
+        if amount is None:
+            raise CommandExecutionException('"amount" not provided')
+        if expression is None:
+            raise CommandExecutionException('"rate" not provided')
         return (base_currency_code, market_currency_code, amount, expression)
 
     def generate_parameters(self, core, current_parameters):
@@ -452,6 +475,46 @@ class PlaceOrderBaseCommand(BaseCommand):
                 print 'Wallet only contains {0} {1}'.format(wallet.available, currency_code)
             return None
         return amount
+
+    def check_rate_and_amount(self, core, base_currency_code, market_currency_code, rate, amount):
+        xchange = core.exchange_handle
+        rate_check = xchange.is_order_rate_valid(
+            base_currency_code,
+            market_currency_code,
+            rate
+        )
+        amount_check = xchange.is_order_amount_valid(
+            base_currency_code,
+            market_currency_code,
+            amount
+        )
+        notional_check = xchange.is_order_notional_value_valid(
+            base_currency_code,
+            market_currency_code,
+            rate,
+            amount
+        )
+        mappings = {
+            OrderInvalidity.Comparison.lower_eq : '<=',
+            OrderInvalidity.Comparison.greater_eq : '>=',
+        }
+        if rate_check != True:
+            raise CommandExecutionException('rate has to be {0} {1}'.format(
+                mappings[rate_check.comparison],
+                utils.format_float(rate_check.value)
+            ))
+        if amount_check != True:
+            raise CommandExecutionException('amount has to be {0} {1}'.format(
+                mappings[amount_check.comparison],
+                utils.format_float(amount_check.value)
+            ))
+        if notional_check != True:
+            fmt = 'notional value (amount * rate) has to be {0} {1} (order has {2})'
+            raise CommandExecutionException(fmt.format(
+                mappings[notional_check.comparison],
+                utils.format_float(notional_check.value),
+                utils.format_float(rate * amount),
+            ))
 
 class SellCommand(PlaceOrderBaseCommand):
     HELP_TEMPLATE = {
@@ -496,6 +559,13 @@ Another example, selling all of our units of ETH at 1 BTC each:
         amount = self.compute_amount(core, market_currency_code, amount)
         if amount is None:
             return
+        # Make sure the exchange accepts this rate/amount
+        self.check_rate_and_amount(core, base_currency_code, market_currency_code, rate, amount)
+        amount = core.exchange_handle.adjust_order_amount(
+            base_currency_code,
+            market_currency_code,
+            amount
+        )
         price = core.price_db.get_currency_price(base_currency_code)
         data = [
             ['Exchange', 'Amount', 'Rate', 'Total price'],
@@ -562,6 +632,8 @@ Another example, buying all of our units of ETH at 1 BTC each:
         amount = self.compute_amount(core, base_currency_code, amount)
         if amount is None:
             return
+        # Make sure the exchange accepts this rate/amount
+        self.check_rate_and_amount(core, base_currency_code, market_currency_code, rate, amount)
         price = core.price_db.get_currency_price(base_currency_code)
         data = [
             ['Exchange', 'Amount', 'Rate', 'Total price'],
@@ -771,13 +843,16 @@ BTC/XLM market:
         BaseCommand.__init__(self, 'candles', self.HELP_TEMPLATE)
 
     def execute(self, core, params):
-        self.ensure_parameter_count(params, 3)
+        self.ensure_parameter_count_between(params, 2, 3)
         base_currency_code = params[0]
         market_currency_code = params[1]
-        try:
-            interval = CandleTicks[params[2]]
-        except KeyError:
-            raise CommandExecutionException('Provided interval is invalid')
+        if len(params) == 2:
+            interval = CandleTicks.thirty_minutes
+        else:
+            try:
+                interval = CandleTicks[params[2]]
+            except KeyError:
+                raise CommandExecutionException('Provided interval is invalid')
         candles = core.exchange_handle.get_candles(
             base_currency_code,
             market_currency_code,

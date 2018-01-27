@@ -68,7 +68,8 @@ class PriceDatabase:
                 raw_result = requests.get(PriceDatabase.CMC_URL)
                 result = json.loads(raw_result.text)
             except Exception as ex:
-                print "Failed to load currency prices: {0}".format(ex)
+                # TODO: somehow log this
+                pass
             if result is not None:
                 with self._prices_condition:
                     for entry in result:

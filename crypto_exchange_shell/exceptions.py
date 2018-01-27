@@ -25,6 +25,8 @@
 # of the authors and should not be interpreted as representing official policies,
 # either expressed or implied, of the FreeBSD Project.
 
+from enum import Enum
+
 class BaseException(Exception):
     pass
 
@@ -55,7 +57,10 @@ class UnknownCommandException(CommandExecutionException):
         self.command = command
 
 class ParameterCountException(CommandExecutionException):
-    def __init__(self, command, expected):
+    Expectation = Enum('Expectation', 'exact at_least at_most')
+
+    def __init__(self, command, expected, expectation=Expectation.exact):
         CommandExecutionException.__init__(self, 'Expected {0} parameters'.format(expected))
         self.command = command
         self.expected = expected
+        self.expectation = expectation

@@ -28,6 +28,13 @@
 from enum import Enum
 from crypto_exchange_shell.exceptions import *
 
+class OrderInvalidity:
+    Comparison = Enum('Comparison', 'lower_eq greater_eq')
+
+    def __init__(self, comparison, value):
+        self.comparison = comparison
+        self.value = value
+
 class BaseExchangeWrapper:
     def __init__(self, exposes_confirmations=True):
         self._currencies = {}
@@ -52,3 +59,15 @@ class BaseExchangeWrapper:
         if base_currency_code not in self._markets:
             raise InvalidArgumentException('Invalid base currency {0}'.format(base_currency_code))
         return [self._currencies[x] for x in self._markets[base_currency_code]]
+
+    def is_order_rate_valid(self, base_currency_code, market_currency_code, rate):
+        return True
+
+    def is_order_amount_valid(self, base_currency_code, market_currency_code, rate):
+        return True
+
+    def is_order_notional_value_valid(self, base_currency_code, market_currency_code, rate, amount):
+        return True
+
+    def adjust_order_amount(self, base_currency_code, market_currency_code, amount):
+        return amount

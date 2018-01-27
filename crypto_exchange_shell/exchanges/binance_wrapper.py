@@ -33,8 +33,17 @@ from datetime import datetime
 from binance.client import Client
 from crypto_exchange_shell.models import *
 from crypto_exchange_shell.exceptions import *
-from crypto_exchange_shell.exchanges.base_exchange_wrapper import BaseExchangeWrapper
+from crypto_exchange_shell.exchanges.base_exchange_wrapper import *
 import crypto_exchange_shell.utils as utils
+
+class OrderFilter:
+    def __init__(self, min_price, max_price, min_amount, max_amount, amount_step, min_notional):
+        self.min_price = min_price
+        self.max_price = max_price
+        self.min_amount = min_amount
+        self.max_amount = max_amount
+        self.amount_step = amount_step
+        self.min_notional = min_notional
 
 class BinanceWrapper(BaseExchangeWrapper):
     INTERVAL_MAP = {
@@ -48,6 +57,7 @@ class BinanceWrapper(BaseExchangeWrapper):
     def __init__(self, api_key, api_secret):
         BaseExchangeWrapper.__init__(self, exposes_confirmations=False)
         self._handle = Client(api_key, api_secret)
+        self._filters = {}
         self._load_markets()
 
     def _perform_request(self, request_lambda):
@@ -77,6 +87,32 @@ class BinanceWrapper(BaseExchangeWrapper):
                     return (base_code, market_code)
         raise ExchangeAPIException('Failed to decode symbol {0}'.format(symbol))
 
+    def _add_filter(self, exchange, filters):
+        min_price = None
+        max_price = None
+        min_amount = None
+        max_amount = None
+        amount_step = None
+        min_notional = None
+        for f in filters:
+            if f['filterType'] == 'PRICE_FILTER':
+                min_price = float(f['minPrice'])
+                max_price = float(f['maxPrice'])
+            elif f['filterType'] == 'LOT_SIZE':
+                min_amount = float(f['minQty'])
+                max_amount = float(f['maxQty'])
+                amount_step = float(f['stepSize'])
+            elif f['filterType'] == 'MIN_NOTIONAL':
+                min_notional = float(f['minNotional'])
+        self._filters[exchange] = OrderFilter(
+            min_price,
+            max_price,
+            min_amount,
+            max_amount,
+            amount_step,
+            min_notional
+        )
+
     def _load_markets(self):
         names = self._load_names()
         result = self._perform_request(lambda: self._handle.get_exchange_info())
@@ -90,6 +126,7 @@ class BinanceWrapper(BaseExchangeWrapper):
                 Currency(market_currency, names.get(market_currency, market_currency), 0, 0)
             )
             self.add_market(base_currency, market_currency)
+            self._add_filter(symbol['symbol'], symbol['filters'])
 
     def get_currency(self, currency_code):
         if currency_code not in self._currencies:
@@ -241,3 +278,47 @@ class BinanceWrapper(BaseExchangeWrapper):
                 dateparser.parse(str(i[0]))
             ))
         return output
+
+    def is_order_rate_valid(self, base_currency_code, market_currency_code, rate):
+        exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
+        if exchange_name not in self._filters:
+            return True
+        order_filter = self._filters[exchange_name]
+        if rate < order_filter.min_price:
+            return OrderInvalidity(OrderInvalidity.Comparison.greater_eq, order_filter.min_price)
+        elif rate > order_filter.max_price:
+            return OrderInvalidity(OrderInvalidity.Comparison.lower_eq, order_filter.max_price)
+        else:
+            return True
+
+    def is_order_amount_valid(self, base_currency_code, market_currency_code, amount):
+        exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
+        if exchange_name not in self._filters:
+            return True
+        order_filter = self._filters[exchange_name]
+        if amount < order_filter.min_amount:
+            return OrderInvalidity(OrderInvalidity.Comparison.greater_eq, order_filter.min_amount)
+        elif amount > order_filter.max_amount:
+            return OrderInvalidity(OrderInvalidity.Comparison.lower_eq, order_filter.max_amount)
+        else:
+            return True
+
+    def is_order_notional_value_valid(self, base_currency_code, market_currency_code, rate, amount):
+        exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
+        if exchange_name not in self._filters:
+            return True
+        order_filter = self._filters[exchange_name]
+        notional_value = rate * amount
+        if notional_value < order_filter.min_notional:
+            return OrderInvalidity(OrderInvalidity.Comparison.greater_eq, order_filter.min_notional)
+        else:
+            return True
+
+    def adjust_order_amount(self, base_currency_code, market_currency_code, amount):
+        exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
+        if exchange_name not in self._filters:
+            return amount
+        order_filter = self._filters[exchange_name]
+        decimals = str(order_filter.amount_step).find('1') - 1
+        meta_format = "{{0:0.{0}f}}".format(decimals)
+        return float(meta_format.format(amount))

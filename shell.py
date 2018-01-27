@@ -116,7 +116,17 @@ while running:
     except UnknownCurrencyException as ex:
         print 'Unknown currency "{0}"'.format(ex.currency_code)
     except ParameterCountException as ex:
-        print '"{0}" command expects {1} parameters'.format(ex.command, ex.expected)
+        mappings = {
+            ParameterCountException.Expectation.exact : 'exactly',
+            ParameterCountException.Expectation.at_least : 'at least',
+            ParameterCountException.Expectation.at_most : 'at most',
+        }
+        print '"{0}" command expects {1} {2} parameter{3}'.format(
+            ex.command,
+            mappings[ex.expectation],
+            ex.expected,
+            's' if ex.expected != 1 else ''
+        )
     except CommandExecutionException as ex:
         print 'Error executing command: {0}'.format(ex)
     except Exception as ex:
