@@ -136,7 +136,7 @@ will be displayed.''',
             table = AsciiTable(data)
         print table.table
 
-    def generate_parameter(sself, core, params):
+    def generate_parameters(self, core, params):
         if len(params) == 0:
             return map(lambda i: i.code, core.exchange_handle.get_base_currencies())
         return []
