@@ -33,6 +33,11 @@ import sys
 import hashlib
 import base64
 import getpass
+try:
+    import readline
+except ImportError: #Window systems don't have GNU readline
+    import pyreadline.windows_readline as readline
+    readline.rl.mode.show_all_if_ambiguous = "on"
 from Crypto.Cipher import AES
 from Crypto import Random
 from dateutil.tz import tzutc, tzlocal
@@ -60,19 +65,23 @@ def datetime_from_utc_time(str_time):
 
 def show_operation_dialog():
     running = True
+    output = None
     while running:
-        sys.stdout.write('Type "yes" or "no" to confirm or decline the operation: ')
-        sys.stdout.flush()
         try:
-            line = raw_input()
+            line = raw_input('Type "yes" or "no" to confirm or decline the operation: ')
         except (KeyboardInterrupt, EOFError):
-            return False
+            break
         if line == 'yes':
-            return True
+            output = True
         elif line == 'no':
-            return False
+            output = False
         else:
             print 'Invalid response'
+        # Remove whatever the user typed so we don't see "yes" or "no" in the history
+        readline.remove_history_item(readline.get_current_history_length() - 1)
+        if output is not None:
+            break
+    return output or False
 
 def encrypt(data, passphrase):
     key = hashlib.sha256(passphrase).digest()
