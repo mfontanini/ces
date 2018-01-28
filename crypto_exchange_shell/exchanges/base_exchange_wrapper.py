@@ -69,5 +69,8 @@ class BaseExchangeWrapper:
     def is_order_notional_value_valid(self, base_currency_code, market_currency_code, rate, amount):
         return True
 
+    def adjust_order_rate(self, base_currency_code, market_currency_code, rate):
+        return rate
+
     def adjust_order_amount(self, base_currency_code, market_currency_code, amount):
         return amount

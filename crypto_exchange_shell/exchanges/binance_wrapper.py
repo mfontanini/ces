@@ -37,9 +37,11 @@ from crypto_exchange_shell.exchanges.base_exchange_wrapper import *
 import crypto_exchange_shell.utils as utils
 
 class OrderFilter:
-    def __init__(self, min_price, max_price, min_amount, max_amount, amount_step, min_notional):
+    def __init__(self, min_price, max_price, price_tick, min_amount, max_amount,
+                 amount_step, min_notional):
         self.min_price = min_price
         self.max_price = max_price
+        self.price_tick = price_tick
         self.min_amount = min_amount
         self.max_amount = max_amount
         self.amount_step = amount_step
@@ -90,6 +92,7 @@ class BinanceWrapper(BaseExchangeWrapper):
     def _add_filter(self, exchange, filters):
         min_price = None
         max_price = None
+        price_tick = None
         min_amount = None
         max_amount = None
         amount_step = None
@@ -98,6 +101,7 @@ class BinanceWrapper(BaseExchangeWrapper):
             if f['filterType'] == 'PRICE_FILTER':
                 min_price = float(f['minPrice'])
                 max_price = float(f['maxPrice'])
+                price_tick = float(f['tickSize'])
             elif f['filterType'] == 'LOT_SIZE':
                 min_amount = float(f['minQty'])
                 max_amount = float(f['maxQty'])
@@ -107,6 +111,7 @@ class BinanceWrapper(BaseExchangeWrapper):
         self._filters[exchange] = OrderFilter(
             min_price,
             max_price,
+            price_tick,
             min_amount,
             max_amount,
             amount_step,
@@ -314,11 +319,24 @@ class BinanceWrapper(BaseExchangeWrapper):
         else:
             return True
 
+    def _adjust_order_value(self, step, value):
+        if step >= 1:
+            return int(value / step) 
+        else:
+            decimals = utils.format_float(step).find('1') - 1
+            meta_format = "{{0:0.{0}f}}".format(decimals)
+            return float(meta_format.format(value))
+
+    def adjust_order_rate(self, base_currency_code, market_currency_code, rate):
+        exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
+        if exchange_name not in self._filters:
+            return amount
+        order_filter = self._filters[exchange_name]
+        return self._adjust_order_value(order_filter.price_tick, rate)
+
     def adjust_order_amount(self, base_currency_code, market_currency_code, amount):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
         if exchange_name not in self._filters:
             return amount
         order_filter = self._filters[exchange_name]
-        decimals = str(order_filter.amount_step).find('1') - 1
-        meta_format = "{{0:0.{0}f}}".format(decimals)
-        return float(meta_format.format(amount))
+        return self._adjust_order_value(order_filter.amount_step, amount)

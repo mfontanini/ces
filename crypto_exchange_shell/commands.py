@@ -462,20 +462,6 @@ class PlaceOrderBaseCommand(BaseCommand):
         options = filter(lambda i: i not in current_parameters, options)
         return options
 
-    def compute_amount(self, core, currency_code, amount):
-        wallet = core.exchange_handle.get_wallet(currency_code)
-        if amount == 'max':
-            amount = wallet.available
-        else:
-            amount = float(amount)
-        if amount > wallet.available:
-            if wallet.available == 0:
-                print '{0} wallet is empty'.format(currency_code)
-            else:
-                print 'Wallet only contains {0} {1}'.format(wallet.available, currency_code)
-            return None
-        return amount
-
     def check_rate_and_amount(self, core, base_currency_code, market_currency_code, rate, amount):
         xchange = core.exchange_handle
         rate_check = xchange.is_order_rate_valid(
@@ -542,6 +528,20 @@ Another example, selling all of our units of ETH at 1 BTC each:
     def __init__(self):
         PlaceOrderBaseCommand.__init__(self, 'sell', self.HELP_TEMPLATE, parse_args=False)
 
+    def compute_amount(self, core, currency_code, amount):
+        wallet = core.exchange_handle.get_wallet(currency_code)
+        if amount == 'max':
+            amount = wallet.available
+        else:
+            amount = float(amount)
+        if amount > wallet.available:
+            if wallet.available == 0:
+                print '{0} wallet is empty'.format(currency_code)
+            else:
+                print 'Wallet only contains {0} {1}'.format(wallet.available, currency_code)
+            return None
+        return amount
+
     def execute(self, core, raw_params):
         base_currency_code, market_currency_code, amount, expression = self.parse_parameters(raw_params)
         market_state = core.exchange_handle.get_market_state(
@@ -565,6 +565,11 @@ Another example, selling all of our units of ETH at 1 BTC each:
             base_currency_code,
             market_currency_code,
             amount
+        )
+        rate = core.exchange_handle.adjust_order_rate(
+            base_currency_code,
+            market_currency_code,
+            rate
         )
         price = core.price_db.get_currency_price(base_currency_code)
         data = [
@@ -615,6 +620,20 @@ Another example, buying all of our units of ETH at 1 BTC each:
     def __init__(self):
         PlaceOrderBaseCommand.__init__(self, 'buy', self.HELP_TEMPLATE, parse_args=False)
 
+    def compute_amount(self, core, currency_code, amount, rate):
+        wallet = core.exchange_handle.get_wallet(currency_code)
+        if amount == 'max':
+            amount = wallet.available / rate
+        else:
+            amount = float(amount)
+            if amount > wallet.available:
+                if wallet.available == 0:
+                    print '{0} wallet is empty'.format(currency_code)
+                else:
+                    print 'Wallet only contains {0} {1}'.format(wallet.available, currency_code)
+                return None
+        return amount
+
     def execute(self, core, raw_params):
         base_currency_code, market_currency_code, amount, expression = self.parse_parameters(raw_params)
         market_state = core.exchange_handle.get_market_state(
@@ -629,11 +648,21 @@ Another example, buying all of our units of ETH at 1 BTC each:
             rate = simple_eval(expression, names=names)
         except Exception as ex:
             raise CommandExecutionException('Failed to evaluate expression: {0}'.format(ex))
-        amount = self.compute_amount(core, base_currency_code, amount)
+        amount = self.compute_amount(core, base_currency_code, amount, rate)
         if amount is None:
             return
         # Make sure the exchange accepts this rate/amount
         self.check_rate_and_amount(core, base_currency_code, market_currency_code, rate, amount)
+        amount = core.exchange_handle.adjust_order_amount(
+            base_currency_code,
+            market_currency_code,
+            amount
+        )
+        rate = core.exchange_handle.adjust_order_rate(
+            base_currency_code,
+            market_currency_code,
+            rate
+        )
         price = core.price_db.get_currency_price(base_currency_code)
         data = [
             ['Exchange', 'Amount', 'Rate', 'Total price'],
@@ -647,7 +676,7 @@ Another example, buying all of our units of ETH at 1 BTC each:
         table = AsciiTable(data, 'Buy operation')
         print table.table
         if utils.show_operation_dialog():
-            order_id = core.exchange_handle.sell(
+            order_id = core.exchange_handle.buy(
                base_currency_code,
                market_currency_code,
                amount,
