@@ -387,7 +387,7 @@ on the parameter used''',
             raise CommandExecutionException('Invalid order type "{0}"'.format(order_type))
         # If we only have the titles
         if len(data) == 1:
-            print 'No open orders found'
+            print 'No {0} orders found'.format(order_type)
         else:
             table = AsciiTable(data, title)
             print table.table

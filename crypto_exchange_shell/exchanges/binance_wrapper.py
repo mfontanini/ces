@@ -158,6 +158,10 @@ class BinanceWrapper(BaseExchangeWrapper):
             ))
         return output
 
+    # Order history in Binance requires a symbol... This doesn't really work
+    def get_order_history(self):
+        return []      
+
     def cancel_order(self, base_currency_code, market_currency_code, order_id):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
         result = self._perform_request(lambda: self._handle.cancel_order(symbol=exchange_name,
