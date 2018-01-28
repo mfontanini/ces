@@ -95,6 +95,13 @@ class BaseCommand:
     def split_args(self, raw_params):
         return filter(lambda i: len(i) > 0, raw_params.strip().split(' '))
 
+    def generate_parameter_options(self, current_parameters, options):
+        # e.g. don't a valid option if the last parameter is already an option
+        if current_parameters[-1] in options:
+            return []
+        options = filter(lambda i: i not in current_parameters, options)
+        return options
+
 class MarketsCommand(BaseCommand):
     HELP_TEMPLATE = {
         'usage' : '{0} [base-currency]',
@@ -458,12 +465,7 @@ class PlaceOrderBaseCommand(BaseCommand):
     def generate_parameters(self, core, current_parameters):
         if len(current_parameters) < 2:
             return self.generate_markets_parameters(core, current_parameters)
-        options = ['amount', 'rate']
-        # e.g. don't return "rate" if the last argument is "amuont" 
-        if current_parameters[-1] in options:
-            return []
-        options = filter(lambda i: i not in current_parameters, options)
-        return options
+        return self.generate_parameter_options(current_parameters, ['amount', 'rate'])
 
     def check_rate_and_amount(self, core, base_currency_code, market_currency_code, rate, amount):
         xchange = core.exchange_handle
@@ -694,7 +696,7 @@ Another example, buying all of our units of ETH at 1 BTC each:
 
 class WithdrawCommand(BaseCommand):
     HELP_TEMPLATE = {
-        'usage' : '{0} <currency> <amount|max> <address> [address-tag]',
+        'usage' : '{0} <currency> amount <amount|max> address <address> [tag address-tag]',
         'short_description' : 'withdraw funds',
         'long_description' : '''Withdraw <amount> funds from the <currency> wallet into
 a wallet with address <address>.
@@ -723,32 +725,55 @@ Another example, 1 BTC:
         # For the memo/payment id we don't want parsing, we'll handle that ourselves
         BaseCommand.__init__(self, 'withdraw', self.HELP_TEMPLATE, parse_args=False)
 
+    def parse_parameters(self, raw_params):
+        raw_params = re.sub(' +', ' ', raw_params)
+        params = self.split_args(raw_params)
+        if len(params) < 5:
+            raise ParameterCountException(
+                self.name,
+                5,
+                expectation=ParameterCountException.Expectation.at_least
+            )
+        currency = params[0]
+        amount = None
+        address = None
+        address_tag = None
+        for i in range(len(params)):
+            if params[i] == 'amount':
+                if amount is not None:
+                    raise CommandExecutionException('"amount" provided more than once')
+                amount = params[i + 1]
+            elif params[i] == 'address':
+                if address is not None:
+                    raise CommandExecutionException('"address" provided more than once')
+                address = params[i + 1]
+            elif params[i] == 'tag':
+                if address_tag is not None:
+                    raise CommandExecutionException('"tag" provided more than once')
+                index = len(' '.join(params[:i + 1]) + ' ')
+                address_tag = raw_params[index:]
+        if amount is None:
+            raise CommandExecutionException('"amount" not provided')
+        if address is None:
+            raise CommandExecutionException('"address" not provided')
+        return (currency, amount, address, address_tag)
+
     def execute(self, core, raw_params):
-        split_params = self.split_args(raw_params)
-        if len(split_params) < 3:
-            raise ParameterCountException(self.name, 3)
-        currency = core.exchange_handle.get_currency(split_params[0])
-        amount = split_params[1]
+        (currency_code, amount, address, address_tag) = self.parse_parameters(raw_params)
+        currency = core.exchange_handle.get_currency(currency_code)
         wallet = core.exchange_handle.get_wallet(currency.code)
         if amount == 'max':
             amount = wallet.available
         else:
             amount = float(amount)
             if wallet.balance <= amount:
-                print 'Wallet only contains {0} {1} (withdraw fee is {2})'.format(
-                    wallet.available,
-                    currency.code,
-                    currency.withdraw_fee
+                raise CommandExecutionException(
+                    'Wallet only contains {0} {1} (withdraw fee is {2})'.format(
+                        wallet.available,
+                        currency.code,
+                        currency.withdraw_fee
+                    )
                 )
-                return
-        address = split_params[2]
-        address_tag = None
-        # Find the address and use the rest of the string (if any) as the address tag.
-        # The address tag is the payment id/memo depending on the currency being used
-        index = raw_params.find(address) + len(address)
-        rest = raw_params[index:].strip()
-        if len(rest) > 0:
-            address_tag = rest
         data = [
             ['Currency', 'Amount', 'Tx fee', 'Address']
         ]
@@ -779,7 +804,7 @@ Another example, 1 BTC:
     def generate_parameters(self, core, current_parameters):
         if len(current_parameters) == 0:
             return map(lambda i: i.code, core.exchange_handle.get_currencies())
-        return []
+        return self.generate_parameter_options(current_parameters, ['amount', 'address', 'tag'])
 
 class UsageCommand(BaseCommand):
     HELP_TEMPLATE = {
