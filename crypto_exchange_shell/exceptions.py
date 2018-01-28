@@ -42,6 +42,20 @@ class UnknownCurrencyException(BaseException):
         BaseException.__init__(self, 'Unknown currency {0}'.format(currency_code))
         self.currency_code = currency_code
 
+class UnknownBaseCurrencyException(BaseException):
+    def __init__(self, currency_code):
+        BaseException.__init__(self, 'Unknown base currency {0}'.format(currency_code))
+        self.currency_code = currency_code
+
+class UnknownMarketException(BaseException):
+    def __init__(self, base_currency_code, market_currency_code):
+        BaseException.__init__(self, 'Unknown market {0}-{1}'.format(
+            base_currency_code,
+            market_currency_code
+        ))
+        self.base_currency_code = base_currency_code
+        self.market_currency_code = market_currency_code
+
 class ExchangeAPIException(BaseException):
     pass
 

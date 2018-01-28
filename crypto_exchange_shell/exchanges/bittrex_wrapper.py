@@ -27,7 +27,7 @@
 
 from bittrex.bittrex import *
 from crypto_exchange_shell.models import *
-from crypto_exchange_shell.exceptions import ExchangeAPIException
+from crypto_exchange_shell.exceptions import *
 from crypto_exchange_shell.exchanges.base_exchange_wrapper import BaseExchangeWrapper
 import crypto_exchange_shell.utils as utils
 
@@ -52,6 +52,9 @@ class BittrexWrapper(BaseExchangeWrapper):
         self._load_markets()
 
     def _make_exchange_name(self, base_currency_code, market_currency_code):
+        if base_currency_code not in self._markets or \
+           market_currency_code not in self._markets[base_currency_code]:
+           raise UnknownMarketException(base_currency_code, market_currency_code)
         return '{0}-{1}'.format(base_currency_code, market_currency_code)
 
     def _load_currencies(self):
@@ -77,11 +80,6 @@ class BittrexWrapper(BaseExchangeWrapper):
     def _check_result(self, result):
         if not result['success']:
             raise ExchangeAPIException(result['message'])
-
-    def get_currency(self, currency_code):
-        if currency_code not in self._currencies:
-            raise InvalidArgumentException('Invalid currency {0}'.format(currency_code))
-        return self._currencies[currency_code]
 
     def get_market_state(self, base_currency_code, market_currency_code):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
@@ -122,6 +120,7 @@ class BittrexWrapper(BaseExchangeWrapper):
         return output
 
     def get_wallet(self, currency_code):
+        self.check_valid_currency(currency_code)
         result = self._handle.get_balance(currency_code)
         self._check_result(result)
         data = result['result']
@@ -245,9 +244,10 @@ class BittrexWrapper(BaseExchangeWrapper):
         self._check_result(result)
         return result['result']['uuid']
 
-    def withdraw(self, currency, amount, address, address_tag):
+    def withdraw(self, currency_code, amount, address, address_tag):
+        self.check_valid_currency(currency_code)
         params = {
-            'currency': currency,
+            'currency': currency_code,
             'quantity': amount,
             'address': address,
         }
@@ -263,6 +263,7 @@ class BittrexWrapper(BaseExchangeWrapper):
         return result['result']['uuid']
 
     def get_deposit_address(self, currency_code):
+        self.check_valid_currency(currency_code)
         self._check_result(self._handle_v2.generate_deposit_address(currency_code))
         result = self._handle_v2.get_deposit_address(currency_code)
         if result['success'] == False:

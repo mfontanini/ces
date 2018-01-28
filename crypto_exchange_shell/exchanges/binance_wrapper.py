@@ -80,6 +80,9 @@ class BinanceWrapper(BaseExchangeWrapper):
         return names
 
     def _make_exchange_name(self, base_currency_code, market_currency_code):
+        if base_currency_code not in self._markets or \
+           market_currency_code not in self._markets[base_currency_code]:
+           raise UnknownMarketException(base_currency_code, market_currency_code)
         return '{0}{1}'.format(market_currency_code, base_currency_code)
 
     def _split_sumbol(self, symbol):
@@ -216,6 +219,7 @@ class BinanceWrapper(BaseExchangeWrapper):
         return output
 
     def get_wallet(self, currency_code):
+        self.check_valid_currency(currency_code)
         result = self._perform_request(lambda: self._handle.get_asset_balance(currency_code))
         free = float(result['free'])
         locked = float(result['locked'])
@@ -261,7 +265,10 @@ class BinanceWrapper(BaseExchangeWrapper):
         return result['orderId']
 
     def get_deposit_address(self, currency_code):
+        self.check_valid_currency(currency_code)
         result = self._perform_request(lambda: self._handle.get_deposit_address(asset=currency_code))
+        if not result['success']:
+            raise ExchangeAPIException('Failed to fetch address for {0} wallet'.format(currency_code))
         return CryptoAddress(
             currency_code,
             result['address'],

@@ -112,6 +112,7 @@ will be displayed.''',
         BaseCommand.__init__(self, 'markets', self.HELP_TEMPLATE)
 
     def execute(self, core, params):
+        self.ensure_parameter_count_between(params, 0, 1)
         if len(params) == 0:
             data = [['Currency']]
             codes = map(lambda i: i.code, core.exchange_handle.get_base_currencies())
@@ -126,8 +127,6 @@ will be displayed.''',
             for i in markets:
                 data.append(['{0}/{1}'.format(params[0], i)])
             table = AsciiTable(data)
-        else:
-            raise ParameterCountException(self.name, 0)
         print table.table
 
     def generate_parameter(sself, core, params):
@@ -431,7 +430,11 @@ class PlaceOrderBaseCommand(BaseCommand):
         raw_params = re.sub(' +', ' ', raw_params)
         params = self.split_args(raw_params)
         if len(params) < 4:
-            raise ParameterCountException(self.name, 4)
+            raise ParameterCountException(
+                self.name,
+                6,
+                expectation=ParameterCountException.Expectation.at_least
+            )
         base_currency_code = params[0]
         market_currency_code = params[1]
         amount = None
@@ -628,9 +631,12 @@ Another example, buying all of our units of ETH at 1 BTC each:
             amount = float(amount)
             if amount > wallet.available:
                 if wallet.available == 0:
-                    print '{0} wallet is empty'.format(currency_code)
+                    raise CommandExecutionException('{0} wallet is empty'.format(currency_code))
                 else:
-                    print 'Wallet only contains {0} {1}'.format(wallet.available, currency_code)
+                    raise CommandExecutionException('Wallet only contains {0} {1}'.format(
+                        utils.format_float(wallet.available),
+                        currency_code
+                    ))
                 return None
         return amount
 
@@ -850,7 +856,7 @@ class DepositAddressCommand(BaseCommand):
 
     def generate_parameters(self, core, current_parameters):
         if len(current_parameters) == 0:
-            return map(lambda i: i.code, core.exchange_handle.get_base_currencies())
+            return map(lambda i: i.code, core.exchange_handle.get_currencies())
         return []
 
 class CandlesCommand(BaseCommand):

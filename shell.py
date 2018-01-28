@@ -37,6 +37,7 @@ from crypto_exchange_shell.shell_completer import ShellCompleter
 from crypto_exchange_shell.core import Core
 from crypto_exchange_shell.price_database import PriceDatabase
 from crypto_exchange_shell.config_manager import ConfigManager
+from crypto_exchange_shell.output_manager import OutputManager
 from crypto_exchange_shell.exceptions import *
 from crypto_exchange_shell.utils import ask_for_passphrase
 
@@ -85,8 +86,9 @@ price_db = PriceDatabase()
 print 'Fetching latest crypto currency prices...'
 price_db.wait_for_data()
 running = True
+output_manager = OutputManager()
 cmd_manager = CommandManager()
-core = Core(handle, cmd_manager, price_db)
+core = Core(handle, cmd_manager, output_manager, price_db)
 completer = ShellCompleter(core)
 while running:
     try:
@@ -110,25 +112,54 @@ while running:
             params = line.strip()[len(tokens[0]):].strip()
         cmd_manager.execute(core, tokens[0], params)
     except ExchangeAPIException as ex:
-        print 'Error calling API: {0}'.format(ex)
+        output_manager.log_error(
+            'API execution error',
+            str(ex)
+        )
     except UnknownCommandException as ex:
-        print 'Unknown command "{0}"'.format(ex.command)
+        output_manager.log_error(
+            'Unknown command',
+            'Command "{0}" doesn\'t exist',
+            ex.command
+        )
     except UnknownCurrencyException as ex:
-        print 'Unknown currency "{0}"'.format(ex.currency_code)
+        output_manager.log_error(
+            'Unknown currency',
+            'Currency "{0}" doesn\'t exist',
+            ex.currency_code
+        )
+    except UnknownBaseCurrencyException as ex:
+        output_manager.log_error(
+            'Unknown base currency',
+            '"{0}" is not a valid base currency',
+            ex.currency_code
+        )
+    except UnknownMarketException as ex:
+        output_manager.log_error(
+            'Unknown market',
+            'Market "{0}-{1}" doesn\'t exist',
+            ex.base_currency_code,
+            ex.market_currency_code
+        )
     except ParameterCountException as ex:
         mappings = {
             ParameterCountException.Expectation.exact : 'exactly',
             ParameterCountException.Expectation.at_least : 'at least',
             ParameterCountException.Expectation.at_most : 'at most',
         }
-        print '"{0}" command expects {1} {2} parameter{3}'.format(
+        output_manager.log_error(
+            'Parameter error',
+            '"{0}" command expects {1} {2} parameter{3}',
             ex.command,
             mappings[ex.expectation],
             ex.expected,
             's' if ex.expected != 1 else ''
         )
     except CommandExecutionException as ex:
-        print 'Error executing command: {0}'.format(ex)
+        output_manager.log_error(
+            'Command execution error',
+            str(ex)
+        )
     except Exception as ex:
         print 'Error: {0}'.format(ex)
         traceback.print_exc()

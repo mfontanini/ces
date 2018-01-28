@@ -49,15 +49,23 @@ class BaseExchangeWrapper:
             self._markets[base_currency_code] = set()
         self._markets[base_currency_code].add(market_currency_code)
 
+    def check_valid_currency(self, currency_code):
+        if currency_code not in self._currencies:
+            raise UnknownCurrencyException(currency_code)
+
     def get_base_currencies(self):
         return [self._currencies[x] for x in self._markets.keys()]
 
     def get_currencies(self):
         return self._currencies.values()
 
+    def get_currency(self, currency_code):
+        self.check_valid_currency(currency_code)
+        return self._currencies[currency_code]
+
     def get_markets(self, base_currency_code):
         if base_currency_code not in self._markets:
-            raise InvalidArgumentException('Invalid base currency {0}'.format(base_currency_code))
+            raise UnknownBaseCurrencyException(base_currency_code)
         return [self._currencies[x] for x in self._markets[base_currency_code]]
 
     def is_order_rate_valid(self, base_currency_code, market_currency_code, rate):

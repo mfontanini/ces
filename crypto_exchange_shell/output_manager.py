@@ -25,9 +25,16 @@
 # of the authors and should not be interpreted as representing official policies,
 # either expressed or implied, of the FreeBSD Project.
 
-class Core:
-    def __init__(self, exchange_handle, cmd_manager, output_manager, price_db):
-        self.exchange_handle = exchange_handle
-        self.cmd_manager = cmd_manager
-        self.output_manager = output_manager
-        self.price_db = price_db
+from terminaltables import AsciiTable
+
+class OutputManager:
+    def __init__(self):
+        pass
+
+    def log_error(self, title, message, *args):
+        data = [
+            ['Type', title],
+            ['Message', message.format(*args)]
+        ]
+        table = AsciiTable(data, 'error')
+        print table.table
