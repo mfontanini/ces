@@ -114,18 +114,18 @@ will be displayed.''',
     def execute(self, core, params):
         self.ensure_parameter_count_between(params, 0, 1)
         if len(params) == 0:
-            data = [['Currency']]
-            codes = map(lambda i: i.code, core.exchange_handle.get_base_currencies())
-            codes.sort()
-            for i in codes:
-                data.append([i])
+            data = [['Currency', 'Name']]
+            currencies = core.exchange_handle.get_base_currencies()
+            currencies = sorted(currencies, key=lambda c: c.code)
+            for c in currencies:
+                data.append([c.code, c.name])
             table = AsciiTable(data)
         elif len(params) == 1:
-            markets = map(lambda i: i.code, core.exchange_handle.get_markets(params[0]))
-            markets.sort()
-            data = [['Market']]
-            for i in markets:
-                data.append(['{0}/{1}'.format(params[0], i)])
+            currencies = core.exchange_handle.get_markets(params[0])
+            currencies = sorted(currencies, key=lambda m: m.code)
+            data = [['Market', 'Currency name']]
+            for c in currencies:
+                data.append(['{0}/{1}'.format(params[0], c.code), c.name])
             table = AsciiTable(data)
         print table.table
 
