@@ -869,6 +869,10 @@ class DepositAddressCommand(BaseCommand):
         self.ensure_parameter_count(params, 1)
         currency_code = params[0]
         address = core.exchange_handle.get_deposit_address(currency_code)
+        if address is None:
+            raise CommandExecutionException(
+                'Failed to fetch {0} address, try again later'.format(currency_code)
+            )
         data = [['Address', address.address]]
         if address.address_tag:
             data.append([
