@@ -25,34 +25,44 @@
 # of the authors and should not be interpreted as representing official policies,
 # either expressed or implied, of the FreeBSD Project.
 
-import yaml
-from exceptions import KeyMissingConfigException
-from utils import decrypt_file
+from models import CryptoAddress, AddressBookEntry
+from exceptions import *
 
-class ConfigManager:
-    def __init__(self):
-        pass
+class AddressBook:
+    def __init__(self, storage, exchange_handle):
+        self._storage = storage
+        self._exchange_handle = exchange_handle
+        self._entries = {}
+        self.load()
 
-    def _ensure_key_is_present(self, config, key):
-        if key not in config:
-            raise KeyMissingConfigException(key)
+    def load(self):
+        self._entries = {}
+        for name, values in self._storage.load_address_book().items():
+            try:
+                self._entries[name] = CryptoAddress(
+                    self._exchange_handle.get_currency(values['currency']),
+                    values['address']
+                )
+            except UnknownCurrencyException as ex:
+                print 'Found unknown currency {0} in address book'.format(values['currency'])
 
-    def _process_config(self, config):
-        self._ensure_key_is_present(config, 'exchange')
-        self._ensure_key_is_present(config, 'database')
-        self._ensure_key_is_present(config['exchange'], 'api_key')
-        self._ensure_key_is_present(config['exchange'], 'api_secret')
-        self._ensure_key_is_present(config['exchange'], 'exchange_name')
-        self.api_key = config['exchange']['api_key']
-        self.api_secret = config['exchange']['api_secret']
-        self.exchange_name = config['exchange']['exchange_name']
-        self.database_path = config['database']['path']
+    def add_entry(self, name, currency_code, address):
+        self._storage.add_address_book(name, currency_code, address)
+        self._entries[name] = CryptoAddress(
+            self._exchange_handle.get_currency(currency_code),
+            address
+        )
 
-    def load(self, config_file):
-        config = yaml.safe_load(open(config_file))
-        self._process_config(config)
+    def remove_entry(self, name):
+        if name not in self._entries:
+            return False
+        self._storage.remove_address_book(name)
+        del self._entries[name]
+        return True
 
-    def load_encrypted(self, config_file, passphrase):
-        config = yaml.safe_load(decrypt_file(config_file, passphrase))
-        self._process_config(config)
-
+    def get_entries(self, currency_code=None):
+        output = []
+        for name, address in self._entries.items():
+            if currency_code is None or address.currency.code == currency_code:
+                output.append(AddressBookEntry(name, address))
+        return output

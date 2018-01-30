@@ -25,34 +25,46 @@
 # of the authors and should not be interpreted as representing official policies,
 # either expressed or implied, of the FreeBSD Project.
 
-import yaml
-from exceptions import KeyMissingConfigException
-from utils import decrypt_file
+from contextlib import closing
+import sqlite3
 
-class ConfigManager:
-    def __init__(self):
-        pass
+class Storage:
+    def __init__(self, db_path):
+        self._handle = sqlite3.connect(db_path)
+        self._create_tables()
 
-    def _ensure_key_is_present(self, config, key):
-        if key not in config:
-            raise KeyMissingConfigException(key)
+    def _create_tables(self):
+        with closing(self._handle.cursor()) as cursor:
+            cursor.execute(
+                'CREATE TABLE IF NOT EXISTS address_book (' \
+                    'name VARCHAR(255) UNIQUE NOT NULL,' \
+                    'currency VARCHAR(10) NOT NULL,' \
+                    'address VARCHAR(255) NOT NULL' \
+                ')'
+            )
 
-    def _process_config(self, config):
-        self._ensure_key_is_present(config, 'exchange')
-        self._ensure_key_is_present(config, 'database')
-        self._ensure_key_is_present(config['exchange'], 'api_key')
-        self._ensure_key_is_present(config['exchange'], 'api_secret')
-        self._ensure_key_is_present(config['exchange'], 'exchange_name')
-        self.api_key = config['exchange']['api_key']
-        self.api_secret = config['exchange']['api_secret']
-        self.exchange_name = config['exchange']['exchange_name']
-        self.database_path = config['database']['path']
+    def load_address_book(self):
+        output = {}
+        query = 'SELECT name, currency, address FROM address_book'
+        with closing(self._handle.cursor()) as cursor:
+            for row in cursor.execute(query):
+                output[row[0]] = {
+                    'currency' : row[1],
+                    'address' : row[2],
+                }
+        return output
 
-    def load(self, config_file):
-        config = yaml.safe_load(open(config_file))
-        self._process_config(config)
+    def add_address_book(self, name, currency_code, address):
+        query = 'INSERT INTO address_book (name, currency, address) '\
+                'VALUES (?, ?, ?)'
+        with closing(self._handle.cursor()) as cursor:
+            cursor.execute(
+                query,
+                (name, currency_code, address)
+            )
+            self._handle.commit()
 
-    def load_encrypted(self, config_file, passphrase):
-        config = yaml.safe_load(decrypt_file(config_file, passphrase))
-        self._process_config(config)
-
+    def remove_address_book(self, name):
+        with closing(self._handle.cursor()) as cursor:
+            cursor.execute('DELETE FROM address_book WHERE name = ?', (name, ))
+            self._handle.commit()

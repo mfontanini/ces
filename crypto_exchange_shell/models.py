@@ -116,6 +116,11 @@ class Candle:
         self.close_price = close_price
         self.timestamp = timestamp
 
+class AddressBookEntry:
+    def __init__(self, name, address):
+        self.name = name
+        self.address = address
+
 CandleTicks = Enum(
     'CandleTicks',
     'one_minute five_minutes thirty_minutes one_hour one_day'

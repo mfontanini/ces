@@ -39,6 +39,8 @@ from crypto_exchange_shell.price_database import PriceDatabase
 from crypto_exchange_shell.config_manager import ConfigManager
 from crypto_exchange_shell.output_manager import OutputManager
 from crypto_exchange_shell.exceptions import *
+from crypto_exchange_shell.storage import Storage
+from crypto_exchange_shell.address_book import AddressBook
 from crypto_exchange_shell.utils import ask_for_passphrase
 
 parser = argparse.ArgumentParser(description='Crypto exchange shell')
@@ -69,7 +71,6 @@ except Exception as ex:
     print 'Error parsing config: {0}'.format(ex)
     exit(1)
 
-
 print 'Fetching data from exchange...'
 try:
     if config_manager.exchange_name == 'bittrex':
@@ -82,13 +83,22 @@ try:
 except Exception as ex:
     print 'Failed to create {0} handle: {1}'.format(config_manager.exchange_name, ex)
     exit(1)
+
+try:
+    storage = Storage(config_manager.database_path)
+    address_book = AddressBook(storage, handle)
+except Exception as ex:
+    print 'Failed to initialize storage: {0}'.format(ex)
+    exit(1)
+
 price_db = PriceDatabase()
 print 'Fetching latest crypto currency prices...'
 price_db.wait_for_data()
+
 running = True
 output_manager = OutputManager()
 cmd_manager = CommandManager()
-core = Core(handle, cmd_manager, output_manager, price_db)
+core = Core(handle, cmd_manager, output_manager, address_book, price_db)
 completer = ShellCompleter(core)
 while running:
     try:

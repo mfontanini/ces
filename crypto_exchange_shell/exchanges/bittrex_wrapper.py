@@ -172,7 +172,8 @@ class BittrexWrapper(BaseExchangeWrapper):
                     data['TxId'],
                     data.get('Confirmations', 0),
                     data['TxCost'],
-                    data['Canceled']
+                    data['Canceled'],
+                    utils.datetime_from_utc_time(data['Opened'])
                 )
                 output.append(deposit)
             except Exception as ex:

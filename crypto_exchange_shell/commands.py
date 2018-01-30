@@ -990,6 +990,95 @@ BTC/XLM market:
             return CandleTicks.__members__.keys()
         return []
 
+class AddressBookCommand(BaseCommand):
+    HELP_TEMPLATE = {
+        'usage' : '{0}',
+        'short_description' : 'manage address book',
+        'long_description' : ''
+    }
+    VALID_ACTIONS = ['add', 'remove', 'list']
+
+    def __init__(self):
+        BaseCommand.__init__(self, 'address_book', self.HELP_TEMPLATE, parse_args=False)
+
+    def parse_parameters(self, raw_params):
+        raw_params = re.sub(' +', ' ', raw_params)
+        params = self.split_args(raw_params)
+        if len(params) == 0:
+            raise ParameterCountException(
+                self.name,
+                1,
+                expectation=ParameterCountException.Expectation.at_least
+            )
+        if params[0] not in AddressBookCommand.VALID_ACTIONS:
+            raise CommandExecutionException('first argument must be one of {0}'.format(
+                AddressBookCommand.VALID_ACTIONS
+            ))
+        action = params[0]
+        if action == 'remove':
+            if len(params) != 2:
+                raise CommandExecutionException('"remove" requires a name')
+            return (action, None, params[1], None)
+        currency_code = params[1] if len(params) > 1 else None
+        name = None
+        address = None
+        for i in range(len(params)):
+            if params[i] == 'address':
+                if address is not None:
+                    raise CommandExecutionException('"address" provided more than once')
+                address = params[i + 1]
+            elif params[i] == 'name':
+                if name is not None:
+                    raise CommandExecutionException('"name" provided more than once')
+                name = params[i + 1]
+        return (action, currency_code, name, address)
+
+    def execute(self, core, raw_params):
+        (action, currency_code, name, address) = self.parse_parameters(raw_params)
+        if action == 'list':
+            if name is not None or address is not None:
+                raise CommandExecutionException('"list" can only take 0 to 1 arguments')
+            entries = core.address_book.get_entries(currency_code)
+            data = [
+                ['Name', 'Currency', 'Address']
+            ] 
+            for entry in entries:
+                data.append([
+                    entry.name,
+                    entry.address.currency.code,
+                    entry.address.address
+                ])
+            if len(data) == 1:
+                print 'No addresses in address book'
+            else:
+                table = AsciiTable(data, 'address book')
+                print table.table
+        elif action == 'add':
+            if currency_code is None:
+                raise CommandExecutionException('currency code has to be provided')
+            if name is None:
+                raise CommandExecutionException('"name" has to be provided')
+            if address is None:
+                raise CommandExecutionException('"address" has to be provided')
+            core.address_book.add_entry(name, currency_code, address)
+            print 'Added new {0} entry to address book'.format(currency_code)
+        elif action == 'remove':
+            if core.address_book.remove_entry(name):
+                print 'Removed "{0}" entry from address book'.format(name)
+            else:
+                print '"{0}" is not in address book'.format(name)
+
+    def generate_parameters(self, core, current_parameters):
+        if len(current_parameters) == 0:
+            return AddressBookCommand.VALID_ACTIONS
+        if len(current_parameters) == 1 and current_parameters[0] in ['add', 'list']:
+            return map(lambda i: i.code, core.exchange_handle.get_currencies())
+        if len(current_parameters) == 1 and current_parameters[0] == 'remove':
+            return map(lambda i: i.name, core.address_book.get_entries())
+        if len(current_parameters) >= 2 and current_parameters[0] == 'add':
+            return self.generate_parameter_options(current_parameters, ['name', 'address'])
+        return []
+
 class CommandManager:
     def __init__(self):
         self._commands = {}
@@ -1007,6 +1096,7 @@ class CommandManager:
         self.add_command(WithdrawCommand())
         self.add_command(DepositAddressCommand())
         self.add_command(CandlesCommand())
+        self.add_command(AddressBookCommand())
         self.add_command(UsageCommand())
         self.add_command(HelpCommand())
 
