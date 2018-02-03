@@ -136,11 +136,6 @@ class BinanceWrapper(BaseExchangeWrapper):
             self.add_market(base_currency, market_currency)
             self._add_filter(symbol['symbol'], symbol['filters'])
 
-    def get_currency(self, currency_code):
-        if currency_code not in self._currencies:
-            raise InvalidArgumentException('Invalid currency {0}'.format(currency_code))
-        return self._currencies[currency_code]
-
     def get_open_orders(self):
         result = self._perform_request(lambda: self._handle.get_open_orders())
         output = []
@@ -330,24 +325,16 @@ class BinanceWrapper(BaseExchangeWrapper):
         else:
             return True
 
-    def _adjust_order_value(self, step, value):
-        if step >= 1:
-            return int(value / step) 
-        else:
-            decimals = utils.format_float(step).find('1') - 1
-            meta_format = "{{0:0.{0}f}}".format(decimals)
-            return float(meta_format.format(value))
-
     def adjust_order_rate(self, base_currency_code, market_currency_code, rate):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
         if exchange_name not in self._filters:
             return amount
         order_filter = self._filters[exchange_name]
-        return self._adjust_order_value(order_filter.price_tick, rate)
+        return utils.round_order_value(order_filter.price_tick, rate)
 
     def adjust_order_amount(self, base_currency_code, market_currency_code, amount):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
         if exchange_name not in self._filters:
             return amount
         order_filter = self._filters[exchange_name]
-        return self._adjust_order_value(order_filter.amount_step, amount)
+        return utils.round_order_value(order_filter.amount_step, amount)

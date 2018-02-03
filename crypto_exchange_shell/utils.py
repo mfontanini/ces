@@ -115,3 +115,16 @@ def make_candle_label(date, interval):
         CandleTicks.one_day : "%d/%m"
     }
     return date.strftime(formats[interval])
+
+def round_order_value(step, value):
+    if step >= 1:
+        return int(value / step) * int(step)
+    else:
+        decimals = format_float(step).find('1') - 1
+        meta_format = "{{0:0.{0}f}}".format(decimals)
+        output = float(meta_format.format(value))
+        # There's still a possibility that the rounding moved the value up. If that's
+        # the case, lower it by "step" and reformat it
+        if output > value:
+            output = float(meta_format.format(output - step))
+        return output
