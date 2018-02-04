@@ -36,24 +36,22 @@ from exchanges.base_exchange_wrapper import OrderInvalidity
 from parameter_parser import *
 
 class BaseCommand:
-    def __init__(self, name, help_template, short_usage_string=None):
+    def __init__(self, name):
         self.name = name
-        self.help_template = help_template
-        self.short_usage_string = short_usage_string
 
     def usage(self):
         data = [
-            ['Usage', self.help_template['usage'].format(self.name)],
-            ['Description', self.help_template['long_description'].format(self.name)],
+            ['Usage'['usage'].format(self.name)],
+            ['Description'['long_description'].format(self.name)],
         ]
-        if 'examples' in self.help_template:
-            data.append(['Examples', self.help_template['examples'].format(self.name)])
+        if 'examples' in self.HELP_TEMPLATE:
+            data.append(['Examples'['examples'].format(self.name)])
         table = AsciiTable(data, self.name)
         table.inner_row_border = True
         return table.table
 
     def short_usage(self):
-        return self.help_template['short_description']
+        return self.HELP_TEMPLATE['short_description']
 
     def execute(self, core, params):
         pass
@@ -128,7 +126,7 @@ will be displayed.''',
     }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'markets', self.HELP_TEMPLATE)
+        BaseCommand.__init__(self, 'markets')
 
     def execute(self, core, raw_params):
         params = self.PARAMETER_PARSER.parse(raw_params)
@@ -164,7 +162,7 @@ is operating. ''',
     }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'market', self.HELP_TEMPLATE)
+        BaseCommand.__init__(self, 'market')
 
     def execute(self, core, raw_params):
         params = self.PARAMETER_PARSER.parse(raw_params)
@@ -199,7 +197,7 @@ class OrderbookCommand(BaseCommand):
     }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'orderbook', self.HELP_TEMPLATE)
+        BaseCommand.__init__(self, 'orderbook')
 
     def _make_columns(self, order, base_currency_code, market_currency_code, price):
         return [
@@ -238,7 +236,7 @@ class WalletsCommand(BaseCommand):
     }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'wallets', self.HELP_TEMPLATE)
+        BaseCommand.__init__(self, 'wallets')
 
     def execute(self, core, raw_params):
         self.PARAMETER_PARSER.parse(raw_params)
@@ -276,7 +274,7 @@ class WalletCommand(BaseCommand):
     }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'wallet', self.HELP_TEMPLATE)
+        BaseCommand.__init__(self, 'wallet')
 
     def execute(self, core, raw_params):
         params = self.PARAMETER_PARSER.parse(raw_params)
@@ -301,7 +299,7 @@ class DepositsCommand(BaseCommand):
     }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'deposits', self.HELP_TEMPLATE)
+        BaseCommand.__init__(self, 'deposits')
 
     def execute(self, core, raw_params):
         self.PARAMETER_PARSER.parse(raw_params)
@@ -333,7 +331,7 @@ class WithdrawalsCommand(BaseCommand):
     }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'withdrawals', self.HELP_TEMPLATE)
+        BaseCommand.__init__(self, 'withdrawals')
 
     def execute(self, core, raw_params):
         self.PARAMETER_PARSER.parse(raw_params)
@@ -374,7 +372,7 @@ on the parameter used''',
     }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'orders', self.HELP_TEMPLATE)
+        BaseCommand.__init__(self, 'orders')
 
     def execute(self, core, raw_params):
         params = self.PARAMETER_PARSER.parse(raw_params)
@@ -428,7 +426,7 @@ on the market <base-currency>/<market-currency>''',
     }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'cancel', self.HELP_TEMPLATE)
+        BaseCommand.__init__(self, 'cancel')
 
     def execute(self, core, raw_params):
         params = self.PARAMETER_PARSER.parse(raw_params)
@@ -515,7 +513,7 @@ Another example, selling all of our units of ETH at 1 BTC each:
     }
 
     def __init__(self):
-        PlaceOrderBaseCommand.__init__(self, 'sell', self.HELP_TEMPLATE)
+        PlaceOrderBaseCommand.__init__(self, 'sell')
 
     def compute_amount(self, core, currency_code, amount):
         wallet = core.exchange_handle.get_wallet(currency_code)
@@ -611,7 +609,7 @@ Another example, buying all of our units of ETH at 1 BTC each:
     }
 
     def __init__(self):
-        PlaceOrderBaseCommand.__init__(self, 'buy', self.HELP_TEMPLATE)
+        PlaceOrderBaseCommand.__init__(self, 'buy')
 
     def compute_amount(self, core, currency_code, amount, rate):
         wallet = core.exchange_handle.get_wallet(currency_code)
@@ -725,7 +723,7 @@ Another example, 1 BTC:
 
     def __init__(self):
         # For the memo/payment id we don't want parsing, we'll handle that ourselves
-        BaseCommand.__init__(self, 'withdraw', self.HELP_TEMPLATE)
+        BaseCommand.__init__(self, 'withdraw')
 
     def execute(self, core, raw_params):
         params = self.PARAMETER_PARSER.parse(raw_params)
@@ -805,7 +803,7 @@ inside [] are optional.''',
     }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'usage', self.HELP_TEMPLATE)
+        BaseCommand.__init__(self, 'usage')
 
     def execute(self, core, raw_params):
         params = self.PARAMETER_PARSER.parse(raw_params)
@@ -826,7 +824,7 @@ class HelpCommand(BaseCommand):
     }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'help', self.HELP_TEMPLATE)
+        BaseCommand.__init__(self, 'help')
 
     def execute(self, core, raw_params):
         self.PARAMETER_PARSER.parse(raw_params)
@@ -850,7 +848,7 @@ class DepositAddressCommand(BaseCommand):
     }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'deposit_address', self.HELP_TEMPLATE)
+        BaseCommand.__init__(self, 'deposit_address')
 
     def execute(self, core, raw_params):
         params = self.PARAMETER_PARSER.parse(raw_params)
@@ -893,7 +891,7 @@ BTC/XLM market:
     SAMPLE_COUNT = 50
 
     def __init__(self):
-        BaseCommand.__init__(self, 'candles', self.HELP_TEMPLATE)
+        BaseCommand.__init__(self, 'candles')
 
     def execute(self, core, raw_params):
         params = self.PARAMETER_PARSER.parse(raw_params)
@@ -998,7 +996,7 @@ class AddressBookCommand(BaseCommand):
     }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'address_book', self.HELP_TEMPLATE)
+        BaseCommand.__init__(self, 'address_book')
 
     def execute(self, core, raw_params):
         params = self.PARAMETER_PARSER.parse(raw_params)
@@ -1053,7 +1051,7 @@ class CoinInfoCommand(BaseCommand):
     }
 
     def __init__(self):
-        BaseCommand.__init__(self, 'coin_info', self.HELP_TEMPLATE)
+        BaseCommand.__init__(self, 'coin_info')
 
     def execute(self, core, raw_params):
         params = self.PARAMETER_PARSER.parse(raw_params)
