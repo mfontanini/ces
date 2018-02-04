@@ -78,3 +78,28 @@ class ParameterCountException(CommandExecutionException):
         self.command = command
         self.expected = expected
         self.expectation = expectation
+
+class DuplicateParameterException(CommandExecutionException):
+    def __init__(self, parameter):
+        CommandExecutionException.__init__(self, 'Duplicate "{0}" parameter'.format(parameter))
+        self.parameter = parameter
+
+class InvalidParameterTypeException(CommandExecutionException):
+    def __init__(self, parameter, type_name):
+        CommandExecutionException.__init__(self, 'Failed to parse parameter {0}'.format(parameter))
+        self.parameter = parameter
+        self.type_name = type_name
+
+class MissingParameterException(CommandExecutionException):
+    def __init__(self, parameter):
+        CommandExecutionException.__init__(self, 'Missing "{0}" parameter'.format(parameter))
+        self.parameter = parameter
+
+class MissingParametersException(CommandExecutionException):
+    def __init__(self):
+        CommandExecutionException.__init__(self, 'Missing parameters')
+
+class ParameterParsingException(CommandExecutionException):
+    def __init__(self, line):
+        CommandExecutionException.__init__(self, 'Failed to parse parameter "{0}"'.format(line))
+        self.line = line

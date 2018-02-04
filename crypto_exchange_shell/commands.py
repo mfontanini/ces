@@ -33,11 +33,11 @@ from exceptions import *
 from models import CandleTicks
 from simpleeval import simple_eval
 from exchanges.base_exchange_wrapper import OrderInvalidity
+from parameter_parser import *
 
 class BaseCommand:
-    def __init__(self, name, help_template, short_usage_string=None, parse_args=True):
+    def __init__(self, name, help_template, short_usage_string=None):
         self.name = name
-        self.parse_args = parse_args
         self.help_template = help_template
         self.short_usage_string = short_usage_string
 
@@ -71,24 +71,6 @@ class BaseCommand:
         else:
             return []
 
-    def ensure_parameter_count(self, params, expected):
-        if len(params) != expected:
-            raise ParameterCountException(self.name, expected)
-
-    def ensure_parameter_count_between(self, params, minimum, maximum):
-        if len(params) < minimum:
-            raise ParameterCountException(
-                self.name,
-                minimum,
-                expectation=ParameterCountException.Expectation.at_least
-            )
-        elif len(params) > maximum:
-            raise ParameterCountException(
-                self.name,
-                maximum,
-                expectation=ParameterCountException.Expectation.at_most
-            )
-
     def format_date(self, datetime):
         return datetime.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -103,6 +85,9 @@ class BaseCommand:
         return options
 
 class MarketsCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([
+        PositionalParameter('base-currency', parameter_type=str, required=False)
+    ])
     HELP_TEMPLATE = {
         'usage' : '{0} [base-currency]',
         'short_description' : 'list the available markets',
@@ -118,8 +103,8 @@ will be displayed.''',
     def __init__(self):
         BaseCommand.__init__(self, 'markets', self.HELP_TEMPLATE)
 
-    def execute(self, core, params):
-        self.ensure_parameter_count_between(params, 0, 1)
+    def execute(self, core, raw_params):
+        params = self.PARAMETER_PARSER.parse(raw_params)
         if len(params) == 0:
             data = [['Currency', 'Name']]
             currencies = core.exchange_handle.get_base_currencies()
@@ -127,12 +112,12 @@ will be displayed.''',
             for c in currencies:
                 data.append([c.code, c.name])
             table = AsciiTable(data)
-        elif len(params) == 1:
-            currencies = core.exchange_handle.get_markets(params[0])
+        else:
+            currencies = core.exchange_handle.get_markets(params['base-currency'])
             currencies = sorted(currencies, key=lambda m: m.code)
             data = [['Market', 'Currency name']]
             for c in currencies:
-                data.append(['{0}/{1}'.format(params[0], c.code), c.name])
+                data.append(['{0}/{1}'.format(params['base-currency'], c.code), c.name])
             table = AsciiTable(data)
         print table.table
 
@@ -142,6 +127,10 @@ will be displayed.''',
         return []
 
 class MarketStateCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([
+        PositionalParameter('base-currency', parameter_type=str),
+        PositionalParameter('market-currency', parameter_type=str),
+    ])
     HELP_TEMPLATE = {
         'usage' : '{0} <base-currency> <market-currency>',
         'short_description' : 'get the market prices',
@@ -155,10 +144,10 @@ is operating. ''',
     def __init__(self):
         BaseCommand.__init__(self, 'market', self.HELP_TEMPLATE)
 
-    def execute(self, core, params):
-        self.ensure_parameter_count(params, 2)
-        base_currency_code = params[0]
-        market_currency_code = params[1]
+    def execute(self, core, raw_params):
+        params = self.PARAMETER_PARSER.parse(raw_params)
+        base_currency_code = params['base-currency']
+        market_currency_code = params['market-currency']
         price = core.price_db.get_currency_price(base_currency_code)
         result = core.exchange_handle.get_market_state(base_currency_code, market_currency_code)
         make_price = lambda i: utils.make_price_string(i, base_currency_code, price)
@@ -175,6 +164,10 @@ is operating. ''',
         return self.generate_markets_parameters(core, current_parameters)
 
 class OrderbookCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([
+        PositionalParameter('base-currency', parameter_type=str),
+        PositionalParameter('market-currency', parameter_type=str),
+    ])
     MAX_LINES = 10
     BASE_ROW_FORMAT = '{{:<{0}}} | {{:<{1}}}'
     HELP_TEMPLATE = {
@@ -195,10 +188,10 @@ class OrderbookCommand(BaseCommand):
             '{0:.2f} {1}'.format(order.quantity, market_currency_code)
         ]
 
-    def execute(self, core, params):
-        self.ensure_parameter_count(params, 2)
-        base_code = params[0]
-        market_code = params[1]
+    def execute(self, core, raw_params):
+        params = self.PARAMETER_PARSER.parse(raw_params)
+        base_code = params['base-currency']
+        market_code = params['market-currency']
         price = core.price_db.get_currency_price(base_code)
         (buy_orderbook, sell_orderbook) = core.exchange_handle.get_orderbook(
             base_code,
@@ -221,6 +214,7 @@ class OrderbookCommand(BaseCommand):
         return self.generate_markets_parameters(core, current_parameters)
 
 class WalletsCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([])
     HELP_TEMPLATE = {
         'usage' : '{0}',
         'short_description' : 'get the wallets and their balances',
@@ -230,8 +224,8 @@ class WalletsCommand(BaseCommand):
     def __init__(self):
         BaseCommand.__init__(self, 'wallets', self.HELP_TEMPLATE)
 
-    def execute(self, core, params):
-        self.ensure_parameter_count(params, 0)
+    def execute(self, core, raw_params):
+        self.PARAMETER_PARSER.parse(raw_params)
         wallets = core.exchange_handle.get_wallets()
         data = [['Currency', 'Available balance', 'Pending']]
         for wallet in sorted(wallets, reverse=True, key=lambda i: i.balance):
@@ -255,6 +249,10 @@ class WalletsCommand(BaseCommand):
         return []
 
 class WalletCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([
+        PositionalParameter('currency', parameter_type=str),
+    ])
+
     HELP_TEMPLATE = {
         'usage' : '{0} <currency>',
         'short_description' : 'get the balance for a specific wallet',
@@ -267,9 +265,9 @@ class WalletCommand(BaseCommand):
     def __init__(self):
         BaseCommand.__init__(self, 'wallet', self.HELP_TEMPLATE)
 
-    def execute(self, core, params):
-        self.ensure_parameter_count(params, 1)
-        currency = core.exchange_handle.get_currency(params[0])
+    def execute(self, core, raw_params):
+        params = self.PARAMETER_PARSER.parse(raw_params)
+        currency = core.exchange_handle.get_currency(params['currency'])
         price = core.price_db.get_currency_price(currency.code)
         wallet = core.exchange_handle.get_wallet(currency.code)
         make_price = lambda i: utils.make_price_string(i, currency.code, price)
@@ -287,6 +285,7 @@ class WalletCommand(BaseCommand):
         return []
 
 class DepositsCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([])
     HELP_TEMPLATE = {
         'usage' : '{0}',
         'short_description' : 'get the deposits made',
@@ -296,8 +295,8 @@ class DepositsCommand(BaseCommand):
     def __init__(self):
         BaseCommand.__init__(self, 'deposits', self.HELP_TEMPLATE)
 
-    def execute(self, core, params):
-        self.ensure_parameter_count(params, 0)
+    def execute(self, core, raw_params):
+        self.PARAMETER_PARSER.parse(raw_params)
         has_confirmations = core.exchange_handle.exposes_confirmations
         data = [
             ['Timestamp', 'Amount', 'Transaction id',
@@ -321,6 +320,7 @@ class DepositsCommand(BaseCommand):
         return []
 
 class WithdrawalsCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([])
     HELP_TEMPLATE = {
         'usage' : '{0}',
         'short_description' : 'get the withdrawals made',
@@ -330,8 +330,8 @@ class WithdrawalsCommand(BaseCommand):
     def __init__(self):
         BaseCommand.__init__(self, 'withdrawals', self.HELP_TEMPLATE)
 
-    def execute(self, core, params):
-        self.ensure_parameter_count(params, 0)
+    def execute(self, core, raw_params):
+        self.PARAMETER_PARSER.parse(raw_params)
         data = [['Amount', 'Transaction id', 'Cost']]
         for withdrawal in core.exchange_handle.get_withdrawal_history():
             if withdrawal.cancelled:
@@ -350,6 +350,12 @@ class WithdrawalsCommand(BaseCommand):
         return []
 
 class OrdersCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([
+        ParameterChoice([
+            ConstParameter('order-type', keyword='open'),
+            ConstParameter('order-type', keyword='completed'),
+        ])
+    ])
     HELP_TEMPLATE = {
         'usage' : '{0} <open|completed>',
         'short_description' : 'get the active and settled orders',
@@ -363,9 +369,9 @@ on the parameter used''',
     def __init__(self):
         BaseCommand.__init__(self, 'orders', self.HELP_TEMPLATE)
 
-    def execute(self, core, params):
-        self.ensure_parameter_count(params, 1)
-        order_type = params[0]
+    def execute(self, core, raw_params):
+        params = self.PARAMETER_PARSER.parse(raw_params)
+        order_type = params['order-type']
         if order_type == 'open':
             data = [['Id', 'Exchange', 'Date', 'Type', 'Bid/Ask', 'Amount (filled/total)']]
             for order in core.exchange_handle.get_open_orders():
@@ -404,6 +410,11 @@ on the parameter used''',
         return []
 
 class CancelOrderCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([
+        PositionalParameter('base-currency', parameter_type=str),
+        PositionalParameter('market-currency', parameter_type=str),
+        NamedParameter('order', parameter_type=str)
+    ])
     HELP_TEMPLATE = {
         'usage' : '{0} <base-currency> <market-currency> <order-id>',
         'short_description' : 'cancel an order',
@@ -417,11 +428,11 @@ on the market <base-currency>/<market-currency>''',
     def __init__(self):
         BaseCommand.__init__(self, 'cancel', self.HELP_TEMPLATE)
 
-    def execute(self, core, params):
-        self.ensure_parameter_count(params, 3)
-        base_currency_code = params[0]
-        market_currency_code = params[1]
-        order_id = params[2]
+    def execute(self, core, raw_params):
+        params = self.PARAMETER_PARSER.parse(raw_params)
+        base_currency_code = params['base-currency']
+        market_currency_code = params['market-currency']
+        order_id = params['order']
         core.exchange_handle.cancel_order(base_currency_code, market_currency_code, order_id)
         print 'Successfully cancelled order {0}'.format(order_id)
 
@@ -429,38 +440,17 @@ on the market <base-currency>/<market-currency>''',
         if len(current_parameters) < 2:
             return self.generate_markets_parameters(core, current_parameters)
         if len(current_parameters) == 2:
+            return self.generate_parameter_options(current_parameters, ['order'])
+        else:
             return map(lambda i: str(i.order_id), core.exchange_handle.get_open_orders())
-        return []
 
 class PlaceOrderBaseCommand(BaseCommand):
-    def parse_parameters(self, raw_params):
-        raw_params = re.sub(' +', ' ', raw_params)
-        params = self.split_args(raw_params)
-        if len(params) < 4:
-            raise ParameterCountException(
-                self.name,
-                6,
-                expectation=ParameterCountException.Expectation.at_least
-            )
-        base_currency_code = params[0]
-        market_currency_code = params[1]
-        amount = None
-        expression = None
-        for i in range(2, len(params)):
-            if params[i] == 'amount':
-                if amount is not None:
-                    raise CommandExecutionException('"amount" provided more than once')
-                amount = params[i + 1]
-            elif params[i] == 'rate':
-                if expression is not None:
-                    raise CommandExecutionException('"rate" provided more than once')
-                index = len(' '.join(params[:i + 1]) + ' ')
-                expression = raw_params[index:]
-        if amount is None:
-            raise CommandExecutionException('"amount" not provided')
-        if expression is None:
-            raise CommandExecutionException('"rate" not provided')
-        return (base_currency_code, market_currency_code, amount, expression)
+    PARAMETER_PARSER = ParameterParser([
+        PositionalParameter('base-currency', parameter_type=str),
+        PositionalParameter('market-currency', parameter_type=str),
+        NamedParameter('amount', parameter_type=str),
+        SwallowInputParameter('rate'),
+    ])
 
     def generate_parameters(self, core, current_parameters):
         if len(current_parameters) < 2:
@@ -531,7 +521,7 @@ Another example, selling all of our units of ETH at 1 BTC each:
     }
 
     def __init__(self):
-        PlaceOrderBaseCommand.__init__(self, 'sell', self.HELP_TEMPLATE, parse_args=False)
+        PlaceOrderBaseCommand.__init__(self, 'sell', self.HELP_TEMPLATE)
 
     def compute_amount(self, core, currency_code, amount):
         wallet = core.exchange_handle.get_wallet(currency_code)
@@ -548,7 +538,11 @@ Another example, selling all of our units of ETH at 1 BTC each:
         return amount
 
     def execute(self, core, raw_params):
-        base_currency_code, market_currency_code, amount, expression = self.parse_parameters(raw_params)
+        params = self.PARAMETER_PARSER.parse(raw_params)
+        base_currency_code = params['base-currency']
+        market_currency_code = params['market-currency']
+        amount = params['amount']
+        expression = params['rate']
         market_state = core.exchange_handle.get_market_state(
             base_currency_code,
             market_currency_code
@@ -623,7 +617,7 @@ Another example, buying all of our units of ETH at 1 BTC each:
     }
 
     def __init__(self):
-        PlaceOrderBaseCommand.__init__(self, 'buy', self.HELP_TEMPLATE, parse_args=False)
+        PlaceOrderBaseCommand.__init__(self, 'buy', self.HELP_TEMPLATE)
 
     def compute_amount(self, core, currency_code, amount, rate):
         wallet = core.exchange_handle.get_wallet(currency_code)
@@ -643,7 +637,11 @@ Another example, buying all of our units of ETH at 1 BTC each:
         return amount
 
     def execute(self, core, raw_params):
-        base_currency_code, market_currency_code, amount, expression = self.parse_parameters(raw_params)
+        params = self.PARAMETER_PARSER.parse(raw_params)
+        base_currency_code = params['base-currency']
+        market_currency_code = params['market-currency']
+        amount = params['amount']
+        expression = params['rate']
         market_state = core.exchange_handle.get_market_state(
             base_currency_code,
             market_currency_code
@@ -695,6 +693,13 @@ Another example, buying all of our units of ETH at 1 BTC each:
             print 'Operation cancelled'
 
 class WithdrawCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([
+        PositionalParameter('currency', parameter_type=str),
+        NamedParameter('amount', parameter_type=str),
+        NamedParameter('address', parameter_type=str),
+        SwallowInputParameter('tag', required=False)
+    ])
+
     HELP_TEMPLATE = {
         'usage' : '{0} <currency> amount <amount|max> address <address> [tag address-tag]',
         'short_description' : 'withdraw funds',
@@ -723,43 +728,14 @@ Another example, 1 BTC:
 
     def __init__(self):
         # For the memo/payment id we don't want parsing, we'll handle that ourselves
-        BaseCommand.__init__(self, 'withdraw', self.HELP_TEMPLATE, parse_args=False)
-
-    def parse_parameters(self, raw_params):
-        raw_params = re.sub(' +', ' ', raw_params)
-        params = self.split_args(raw_params)
-        if len(params) < 5:
-            raise ParameterCountException(
-                self.name,
-                5,
-                expectation=ParameterCountException.Expectation.at_least
-            )
-        currency = params[0]
-        amount = None
-        address = None
-        address_tag = None
-        for i in range(len(params)):
-            if params[i] == 'amount':
-                if amount is not None:
-                    raise CommandExecutionException('"amount" provided more than once')
-                amount = params[i + 1]
-            elif params[i] == 'address':
-                if address is not None:
-                    raise CommandExecutionException('"address" provided more than once')
-                address = params[i + 1]
-            elif params[i] == 'tag':
-                if address_tag is not None:
-                    raise CommandExecutionException('"tag" provided more than once')
-                index = len(' '.join(params[:i + 1]) + ' ')
-                address_tag = raw_params[index:]
-        if amount is None:
-            raise CommandExecutionException('"amount" not provided')
-        if address is None:
-            raise CommandExecutionException('"address" not provided')
-        return (currency, amount, address, address_tag)
+        BaseCommand.__init__(self, 'withdraw', self.HELP_TEMPLATE)
 
     def execute(self, core, raw_params):
-        (currency_code, amount, address, address_tag) = self.parse_parameters(raw_params)
+        params = self.PARAMETER_PARSER.parse(raw_params)
+        currency_code = params['currency']
+        amount = params['amount']
+        address = params['address']
+        address_tag = params.get('tag', None)
         currency = core.exchange_handle.get_currency(currency_code)
         wallet = core.exchange_handle.get_wallet(currency.code)
         if amount == 'max':
@@ -807,6 +783,9 @@ Another example, 1 BTC:
         return self.generate_parameter_options(current_parameters, ['amount', 'address', 'tag'])
 
 class UsageCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([
+        PositionalParameter('command', parameter_type=str)
+    ])
     HELP_TEMPLATE = {
         'usage' : '{0} <command>',
         'short_description' : 'print command\'s usage',
@@ -822,9 +801,9 @@ inside [] are optional.''',
     def __init__(self):
         BaseCommand.__init__(self, 'usage', self.HELP_TEMPLATE)
 
-    def execute(self, core, params):
-        self.ensure_parameter_count(params, 1)
-        print core.cmd_manager.get_command(params[0]).usage()
+    def execute(self, core, raw_params):
+        params = self.PARAMETER_PARSER.parse(raw_params)
+        print core.cmd_manager.get_command(params['command']).usage()
 
     def generate_parameters(self, core, current_parameters):
         if len(current_parameters) == 0:
@@ -832,6 +811,8 @@ inside [] are optional.''',
         return []
 
 class HelpCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([])
+
     HELP_TEMPLATE = {
         'usage' : '{0}',
         'short_description' : 'print this help message',
@@ -841,8 +822,8 @@ class HelpCommand(BaseCommand):
     def __init__(self):
         BaseCommand.__init__(self, 'help', self.HELP_TEMPLATE)
 
-    def execute(self, core, params):
-        self.ensure_parameter_count(params, 0)
+    def execute(self, core, raw_params):
+        self.PARAMETER_PARSER.parse(raw_params)
         data = [['Command', 'Help']]
         for cmd in core.cmd_manager.get_command_names():
             data.append([cmd, core.cmd_manager.get_command(cmd).short_usage()])
@@ -853,6 +834,9 @@ class HelpCommand(BaseCommand):
         return []
 
 class DepositAddressCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([
+        PositionalParameter('currency', parameter_type=str)
+    ])
     HELP_TEMPLATE = {
         'usage' : '{0} <currency>',
         'short_description' : 'get the deposit address for a currency',
@@ -865,9 +849,9 @@ class DepositAddressCommand(BaseCommand):
     def __init__(self):
         BaseCommand.__init__(self, 'deposit_address', self.HELP_TEMPLATE)
 
-    def execute(self, core, params):
-        self.ensure_parameter_count(params, 1)
-        currency_code = params[0]
+    def execute(self, core, raw_params):
+        params = self.PARAMETER_PARSER.parse(raw_params)
+        currency_code = params['currency']
         address = core.exchange_handle.get_deposit_address(currency_code)
         if address is None:
             raise CommandExecutionException(
@@ -889,6 +873,13 @@ class DepositAddressCommand(BaseCommand):
         return []
 
 class CandlesCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([
+        PositionalParameter('base-currency', parameter_type=str),
+        PositionalParameter('market-currency', parameter_type=str),
+        ParameterChoice([
+            ConstParameter('interval', keyword=i, required=False) for i in CandleTicks.__members__.keys()
+        ])
+    ])
     HELP_TEMPLATE = {
         'usage' : '{0} <base-currency> <market-currency> <interval>',
         'short_description' : 'fetch the price candles for a market',
@@ -906,17 +897,15 @@ BTC/XLM market:
     def __init__(self):
         BaseCommand.__init__(self, 'candles', self.HELP_TEMPLATE)
 
-    def execute(self, core, params):
-        self.ensure_parameter_count_between(params, 2, 3)
-        base_currency_code = params[0]
-        market_currency_code = params[1]
-        if len(params) == 2:
+    def execute(self, core, raw_params):
+        params = self.PARAMETER_PARSER.parse(raw_params)
+        base_currency_code = params['base-currency']
+        market_currency_code = params['market-currency']
+        interval_string = params.get('interval', None)
+        if interval_string is None:
             interval = CandleTicks.thirty_minutes
         else:
-            try:
-                interval = CandleTicks[params[2]]
-            except KeyError:
-                raise CommandExecutionException('Provided interval is invalid')
+            interval = CandleTicks[interval_string]
         candles = core.exchange_handle.get_candles(
             base_currency_code,
             market_currency_code,
@@ -991,6 +980,24 @@ BTC/XLM market:
         return []
 
 class AddressBookCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([
+        ParameterChoice([
+            ParameterGroup([
+                ConstParameter('action', keyword='list'),
+                PositionalParameter('currency', parameter_type=str, required=False)
+            ]),
+            ParameterGroup([
+                ConstParameter('action', keyword='add'),
+                PositionalParameter('currency', parameter_type=str),
+                NamedParameter('name', parameter_type=str),
+                NamedParameter('address', parameter_type=str)
+            ]),
+            ParameterGroup([
+                ConstParameter('action', keyword='remove'),
+                NamedParameter('name', parameter_type=str),
+            ])
+        ])
+    ])
     HELP_TEMPLATE = {
         'usage' : '{0}',
         'short_description' : 'manage address book',
@@ -999,45 +1006,15 @@ class AddressBookCommand(BaseCommand):
     VALID_ACTIONS = ['add', 'remove', 'list']
 
     def __init__(self):
-        BaseCommand.__init__(self, 'address_book', self.HELP_TEMPLATE, parse_args=False)
-
-    def parse_parameters(self, raw_params):
-        raw_params = re.sub(' +', ' ', raw_params)
-        params = self.split_args(raw_params)
-        if len(params) == 0:
-            raise ParameterCountException(
-                self.name,
-                1,
-                expectation=ParameterCountException.Expectation.at_least
-            )
-        if params[0] not in AddressBookCommand.VALID_ACTIONS:
-            raise CommandExecutionException('first argument must be one of {0}'.format(
-                AddressBookCommand.VALID_ACTIONS
-            ))
-        action = params[0]
-        if action == 'remove':
-            if len(params) != 2:
-                raise CommandExecutionException('"remove" requires a name')
-            return (action, None, params[1], None)
-        currency_code = params[1] if len(params) > 1 else None
-        name = None
-        address = None
-        for i in range(len(params)):
-            if params[i] == 'address':
-                if address is not None:
-                    raise CommandExecutionException('"address" provided more than once')
-                address = params[i + 1]
-            elif params[i] == 'name':
-                if name is not None:
-                    raise CommandExecutionException('"name" provided more than once')
-                name = params[i + 1]
-        return (action, currency_code, name, address)
+        BaseCommand.__init__(self, 'address_book', self.HELP_TEMPLATE)
 
     def execute(self, core, raw_params):
-        (action, currency_code, name, address) = self.parse_parameters(raw_params)
+        params = self.PARAMETER_PARSER.parse(raw_params)
+        action = params['action']
+        currency_code = params.get('currency', None)
+        address = params.get('address', None)
+        name = params.get('name', None)
         if action == 'list':
-            if name is not None or address is not None:
-                raise CommandExecutionException('"list" can only take 0 to 1 arguments')
             entries = core.address_book.get_entries(currency_code)
             data = [
                 ['Name', 'Currency', 'Address']
@@ -1054,12 +1031,6 @@ class AddressBookCommand(BaseCommand):
                 table = AsciiTable(data, 'address book')
                 print table.table
         elif action == 'add':
-            if currency_code is None:
-                raise CommandExecutionException('currency code has to be provided')
-            if name is None:
-                raise CommandExecutionException('"name" has to be provided')
-            if address is None:
-                raise CommandExecutionException('"address" has to be provided')
             core.address_book.add_entry(name, currency_code, address)
             print 'Added new {0} entry to address book'.format(currency_code)
         elif action == 'remove':
@@ -1073,8 +1044,11 @@ class AddressBookCommand(BaseCommand):
             return AddressBookCommand.VALID_ACTIONS
         if len(current_parameters) == 1 and current_parameters[0] in ['add', 'list']:
             return map(lambda i: i.code, core.exchange_handle.get_currencies())
-        if len(current_parameters) == 1 and current_parameters[0] == 'remove':
-            return map(lambda i: i.name, core.address_book.get_entries())
+        if current_parameters[0] == 'remove':
+            if len(current_parameters) == 1:
+                return self.generate_parameter_options(current_parameters, ['name'])
+            elif len(current_parameters) == 2:
+                return map(lambda i: i.name, core.address_book.get_entries())
         if len(current_parameters) >= 2 and current_parameters[0] == 'add':
             return self.generate_parameter_options(current_parameters, ['name', 'address'])
         return []
