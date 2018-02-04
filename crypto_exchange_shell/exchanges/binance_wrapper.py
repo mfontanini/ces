@@ -64,7 +64,12 @@ class BinanceWrapper(BaseExchangeWrapper):
 
     def _perform_request(self, request_lambda):
         try:
-            return request_lambda()
+            output = request_lambda()
+            if output.get('success', True) == False:
+               if output['msg']['code'] == -1021:
+                   raise ExchangeAPIException('Request timed out')
+               raise ExchangeAPIException(output['msg']['msg'])
+            return output
         except Exception as ex:
             raise ExchangeAPIException(ex.message)
 
@@ -159,6 +164,21 @@ class BinanceWrapper(BaseExchangeWrapper):
     # Order history in Binance requires a symbol... This doesn't really work
     def get_order_history(self):
         return []      
+
+    def get_withdrawal_history(self):
+        result = self._perform_request(lambda: self._handle.get_withdraw_history())
+        output = []
+        for item in result.get("withdrawList", []):
+            output.append(Transfer(
+                self._currencies[item['asset']],
+                item['amount'],
+                item['txId'],
+                None, # Confirmation
+                None, # Tx cost
+                item['status'] == 1, # Cancelled
+                utils.datetime_from_utc_time(str(item['applyTime']))
+            ))
+        return output
 
     def cancel_order(self, base_currency_code, market_currency_code, order_id):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)

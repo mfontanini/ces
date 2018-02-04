@@ -332,17 +332,22 @@ class WithdrawalsCommand(BaseCommand):
 
     def execute(self, core, raw_params):
         self.PARAMETER_PARSER.parse(raw_params)
-        data = [['Amount', 'Transaction id', 'Cost']]
-        for withdrawal in core.exchange_handle.get_withdrawal_history():
-            if withdrawal.cancelled:
-                cost = '0 (cancelled)'
-            else:
-                cost = '{0} {1}'.format(withdrawal.cost, withdrawal.currency.code)
+        withdrawals = core.exchange_handle.get_withdrawal_history()
+        data = [['Amount', 'Transaction id']]
+        has_cost = any(map(lambda i: i.cost is not None, withdrawals))
+        if has_cost:
+            data[0].append('Cost')
+        for withdrawal in withdrawals:
             data.append([
                 '{0} {1}'.format(withdrawal.amount, withdrawal.currency.code),
-                withdrawal.transaction_id,
-                cost
+                withdrawal.transaction_id
             ])
+            if has_cost:
+                if withdrawal.cancelled:
+                    cost = '0 (cancelled)'
+                else:
+                    cost = '{0} {1}'.format(withdrawal.cost, withdrawal.currency.code)
+                data[-1].append(cost)
         table = AsciiTable(data, 'Withdrawals')
         print table.table
 
