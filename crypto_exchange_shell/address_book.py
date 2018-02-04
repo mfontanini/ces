@@ -74,3 +74,6 @@ class AddressBook:
             if currency_code is None or address.currency.code == currency_code:
                 output.append(AddressBookEntry(name, address))
         return output
+
+    def get_entry(self, name):
+        return self._entries.get(name, None)

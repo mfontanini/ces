@@ -690,7 +690,10 @@ class WithdrawCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
         PositionalParameter('currency', parameter_type=str),
         NamedParameter('amount', parameter_type=str),
-        NamedParameter('address', parameter_type=str),
+        ParameterChoice([
+            NamedParameter('address', parameter_type=str),
+            NamedParameter('address_book', parameter_type=str),
+        ]),
         SwallowInputParameter('tag', required=False)
     ])
 
@@ -728,7 +731,15 @@ Another example, 1 BTC:
         params = self.PARAMETER_PARSER.parse(raw_params)
         currency_code = params['currency']
         amount = params['amount']
-        address = params['address']
+        if 'address' in params:
+            address = params['address']
+        else:
+            entry = core.address_book.get_entry(params['address_book'])
+            if entry is None:
+                raise CommandExecutionException(
+                    'Address book entry "{0}" does not exist'.format(params['address_book'])
+                )
+            address = entry.address
         address_tag = params.get('tag', None)
         currency = core.exchange_handle.get_currency(currency_code)
         wallet = core.exchange_handle.get_wallet(currency.code)
@@ -770,6 +781,12 @@ Another example, 1 BTC:
             print 'Successfully posted withdraw order with id {0}'.format(withdraw_id)
         else:
             print 'Operation cancelled'
+
+    def generate_options(self, core, parameter_name, existing_parameters):
+        if parameter_name == 'address_book':
+            currency_code = existing_parameters['currency']
+            return map(lambda i: i.name, core.address_book.get_entries(currency_code))
+        return []
 
 class UsageCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
