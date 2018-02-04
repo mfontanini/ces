@@ -75,11 +75,13 @@ class ShellCompleter:
                 command = self._core.cmd_manager.get_command(tokens[0])
             except:
                 return None
-            tokens = filter(lambda i: len(i) > 0, tokens)
-            # Remove the last one as it's a partial match
-            if len(tokens) > 0 and line[-1] != ' ':
-                tokens.pop()
-            self._setup_completion(text, command.generate_parameters(self._core, tokens[1:]))
+            line = line[len(tokens[0]):]
+            if not line.endswith(' '):
+                index = line.rfind(' ')
+                if index == -1:
+                    index = 0
+                line = line[:index]
+            self._setup_completion(text, command.generate_parameters(self._core, line.strip()))
         return self._get_completion(text, state)
 
     def _setup_completion(self, text, options):

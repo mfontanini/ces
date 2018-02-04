@@ -84,6 +84,33 @@ class BaseCommand:
         options = filter(lambda i: i not in current_parameters, options)
         return options
 
+    def _generate_options(self, core, parameter_name, existing_parameters):
+        base_currency_codes = map(lambda i: i.code, core.exchange_handle.get_base_currencies())
+        if parameter_name == 'base-currency':
+            return base_currency_codes
+        elif parameter_name == 'market-currency':
+            base_currency = existing_parameters['base-currency']
+            if base_currency not in base_currency_codes:
+                return []
+            return map(lambda i: i.code, core.exchange_handle.get_markets(base_currency))
+        elif parameter_name == 'currency':
+            return map(lambda i: i.code, core.exchange_handle.get_currencies())
+        return self.generate_options(core, parameter_name, existing_parameters)
+
+    def generate_options(self, core, parameter_name, existing_parameters):
+        return []
+
+    def generate_parameters(self, core, params):
+        (options, existing_parameters) = self.PARAMETER_PARSER.generate_next_parameters(params)
+        visitor = utils.ParameterOptionVisitor()
+        for option in options:
+            option.apply_visitor(visitor)
+        output = []
+        output += map(lambda i: i.value, visitor.tokens)
+        for option in visitor.parameters:
+            output += self._generate_options(core, option.parameter.name, existing_parameters)
+        return output
+
 class MarketsCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
         PositionalParameter('base-currency', parameter_type=str, required=False)
@@ -121,11 +148,6 @@ will be displayed.''',
             table = AsciiTable(data)
         print table.table
 
-    def generate_parameters(self, core, params):
-        if len(params) == 0:
-            return map(lambda i: i.code, core.exchange_handle.get_base_currencies())
-        return []
-
 class MarketStateCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
         PositionalParameter('base-currency', parameter_type=str),
@@ -159,9 +181,6 @@ is operating. ''',
         table = AsciiTable(data, '{0}/{1} market'.format(base_currency_code, market_currency_code))
         table.inner_heading_row_border = False
         print table.table
-
-    def generate_parameters(self, core, current_parameters):
-        return self.generate_markets_parameters(core, current_parameters)
 
 class OrderbookCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
@@ -210,9 +229,6 @@ class OrderbookCommand(BaseCommand):
         for i in range(len(buy_table_rows)):
             print '{0} {1}'.format(buy_table_rows[i], sell_table_rows[i])
 
-    def generate_parameters(self, core, current_parameters):
-        return self.generate_markets_parameters(core, current_parameters)
-
 class WalletsCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([])
     HELP_TEMPLATE = {
@@ -245,9 +261,6 @@ class WalletsCommand(BaseCommand):
         table = AsciiTable(data, 'wallets')
         print table.table
 
-    def generate_parameters(self, core, current_parameters):
-        return []
-
 class WalletCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
         PositionalParameter('currency', parameter_type=str),
@@ -278,11 +291,6 @@ class WalletCommand(BaseCommand):
         table = AsciiTable(data, '{0} wallet'.format(currency.name))
         table.inner_heading_row_border = False
         print table.table
-
-    def generate_parameters(self, core, current_parameters):
-        if len(current_parameters) == 0:
-            return map(lambda i: i.code, core.exchange_handle.get_currencies())
-        return []
 
 class DepositsCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([])
@@ -316,9 +324,6 @@ class DepositsCommand(BaseCommand):
         table = AsciiTable(data, 'Deposits')
         print table.table
 
-    def generate_parameters(self, core, current_parameters):
-        return []
-
 class WithdrawalsCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([])
     HELP_TEMPLATE = {
@@ -350,9 +355,6 @@ class WithdrawalsCommand(BaseCommand):
                 data[-1].append(cost)
         table = AsciiTable(data, 'Withdrawals')
         print table.table
-
-    def generate_parameters(self, core, current_parameters):
-        return []
 
 class OrdersCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
@@ -409,11 +411,6 @@ on the parameter used''',
             table = AsciiTable(data, title)
             print table.table
 
-    def generate_parameters(self, core, current_parameters):
-        if len(current_parameters) == 0:
-            return ['open', 'completed']
-        return []
-
 class CancelOrderCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
         PositionalParameter('base-currency', parameter_type=str),
@@ -421,7 +418,7 @@ class CancelOrderCommand(BaseCommand):
         NamedParameter('order', parameter_type=str)
     ])
     HELP_TEMPLATE = {
-        'usage' : '{0} <base-currency> <market-currency> <order-id>',
+        'usage' : '{0} <base-currency> <market-currency> order <order-id>',
         'short_description' : 'cancel an order',
         'long_description' : '''Cancel the buy/sell order with id <order-id> which was posted
 on the market <base-currency>/<market-currency>''',
@@ -441,13 +438,10 @@ on the market <base-currency>/<market-currency>''',
         core.exchange_handle.cancel_order(base_currency_code, market_currency_code, order_id)
         print 'Successfully cancelled order {0}'.format(order_id)
 
-    def generate_parameters(self, core, current_parameters):
-        if len(current_parameters) < 2:
-            return self.generate_markets_parameters(core, current_parameters)
-        if len(current_parameters) == 2:
-            return self.generate_parameter_options(current_parameters, ['order'])
-        else:
+    def generate_options(self, core, parameter_name, existing_parameters):
+        if parameter_name == 'order':
             return map(lambda i: str(i.order_id), core.exchange_handle.get_open_orders())
+        return []
 
 class PlaceOrderBaseCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
@@ -456,11 +450,6 @@ class PlaceOrderBaseCommand(BaseCommand):
         NamedParameter('amount', parameter_type=str),
         SwallowInputParameter('rate'),
     ])
-
-    def generate_parameters(self, core, current_parameters):
-        if len(current_parameters) < 2:
-            return self.generate_markets_parameters(core, current_parameters)
-        return self.generate_parameter_options(current_parameters, ['amount', 'rate'])
 
     def check_rate_and_amount(self, core, base_currency_code, market_currency_code, rate, amount):
         xchange = core.exchange_handle
@@ -782,11 +771,6 @@ Another example, 1 BTC:
         else:
             print 'Operation cancelled'
 
-    def generate_parameters(self, core, current_parameters):
-        if len(current_parameters) == 0:
-            return map(lambda i: i.code, core.exchange_handle.get_currencies())
-        return self.generate_parameter_options(current_parameters, ['amount', 'address', 'tag'])
-
 class UsageCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
         PositionalParameter('command', parameter_type=str)
@@ -810,8 +794,8 @@ inside [] are optional.''',
         params = self.PARAMETER_PARSER.parse(raw_params)
         print core.cmd_manager.get_command(params['command']).usage()
 
-    def generate_parameters(self, core, current_parameters):
-        if len(current_parameters) == 0:
+    def generate_options(self, core, parameter_name, existing_parameters):
+        if parameter_name == 'command':
             return core.cmd_manager.get_command_names()
         return []
 
@@ -834,9 +818,6 @@ class HelpCommand(BaseCommand):
             data.append([cmd, core.cmd_manager.get_command(cmd).short_usage()])
         table = AsciiTable(data, 'Commands')
         print table.table
-
-    def generate_parameters(self, core, current_parameters):
-        return []
 
 class DepositAddressCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
@@ -871,11 +852,6 @@ class DepositAddressCommand(BaseCommand):
         table = AsciiTable(data, '{0} deposit address'.format(currency_code))
         table.inner_heading_row_border = False
         print table.table
-
-    def generate_parameters(self, core, current_parameters):
-        if len(current_parameters) == 0:
-            return map(lambda i: i.code, core.exchange_handle.get_currencies())
-        return []
 
 class CandlesCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
@@ -974,16 +950,6 @@ BTC/XLM market:
         x_labels.reverse()
         print ' ' * len(y_fmt_string.format(0.0)) + '   '.join(x_labels)
 
-
-    def generate_parameters(self, core, current_parameters):
-        if len(current_parameters) == 0:
-            return map(lambda i: i.code, core.exchange_handle.get_base_currencies())
-        elif len(current_parameters) == 1:
-            return map(lambda i: i.code, core.exchange_handle.get_markets(current_parameters[0]))
-        elif len(current_parameters) == 2:
-            return CandleTicks.__members__.keys()
-        return []
-
 class AddressBookCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
         ParameterChoice([
@@ -1052,23 +1018,9 @@ class AddressBookCommand(BaseCommand):
             core.address_book.rename_entry(name, params['set'])
             print 'Renamed "{0}" entry to "{1}"'.format(name, params['set'])
 
-    def generate_parameters(self, core, current_parameters):
-        if len(current_parameters) == 0:
-            return AddressBookCommand.VALID_ACTIONS
-        if len(current_parameters) == 1 and current_parameters[0] in ['add', 'list']:
-            return map(lambda i: i.code, core.exchange_handle.get_currencies())
-        if current_parameters[0] in ['remove', 'rename']:
-            options = ['name']
-            if current_parameters[0] == 'rename':
-                options.append('set')
-            if len(current_parameters) == 1:
-                return self.generate_parameter_options(current_parameters, options)
-            elif len(current_parameters) == 2:
-                return map(lambda i: i.name, core.address_book.get_entries())
-            else:
-                return self.generate_parameter_options(current_parameters, options)
-        if len(current_parameters) >= 2 and current_parameters[0] == 'add':
-            return self.generate_parameter_options(current_parameters, ['name', 'address'])
+    def generate_options(self, core, parameter_name, existing_parameters):
+        if parameter_name == 'name' and existing_parameters['action'] != 'add':
+            return map(lambda i: i.name, core.address_book.get_entries())
         return []
 
 class CommandManager:

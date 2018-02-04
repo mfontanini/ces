@@ -2,6 +2,16 @@ import unittest
 from crypto_exchange_shell.parameter_parser import *
 from crypto_exchange_shell.exceptions import *
 
+class OptionVisitor:
+    def __init__(self):
+        self.tokens = []
+
+    def visit_const_option(self, option):
+        self.tokens.append(option.value)
+
+    def visit_parameter_option(self, option):
+        self.tokens.append('<{0}>'.format(option.parameter.name))
+
 class TestParameterParser(unittest.TestCase):
     def extract_exception(self, functor):
         try:
@@ -9,6 +19,13 @@ class TestParameterParser(unittest.TestCase):
             return None
         except Exception as ex:
             return ex
+
+    def collect_suggestions(self, parser, line):
+        visitor = OptionVisitor()
+        options = parser.generate_next_parameters(line)[0]
+        for option in options:
+            option.apply_visitor(visitor)
+        return visitor.tokens
 
     def test_parse_positional_int(self):
         parser = ParameterParser([
@@ -183,6 +200,37 @@ class TestParameterParser(unittest.TestCase):
         self.assertEqual(
             self.extract_exception(lambda: parser.parse('add XLM name')).line,
             'name'
+        )
+
+        # Option suggestions
+        self.assertEqual(
+            ['list', 'add', 'remove'],
+            self.collect_suggestions(parser, '')
+        )
+
+        self.assertEqual(
+            ['<currency>'],
+            self.collect_suggestions(parser, 'list')
+        )
+
+        self.assertEqual(
+            ['name', 'address'],
+            self.collect_suggestions(parser, 'add XLM')
+        )
+
+        self.assertEqual(
+            ['<name>'],
+            self.collect_suggestions(parser, 'remove name')
+        )
+
+        self.assertEqual(
+            ['<address>'],
+            self.collect_suggestions(parser, 'add XLM name test address ')
+        )
+
+        self.assertEqual(
+            ['<address>'],
+            self.collect_suggestions(parser, 'add XLM address ')
         )
 
 if __name__ == "__main__":

@@ -27,11 +27,30 @@
 
 import itertools
 from exceptions import *
+import utils
 
 class Match:
     def __init__(self, name, value):
         self.name = name
         self.value = value
+
+class BaseOption:
+    def apply_visitor(self, visitor):
+        pass
+
+class ConstOption(BaseOption):
+    def __init__(self, value):
+        self.value = value
+
+    def apply_visitor(self, visitor):
+        visitor.visit_const_option(self)
+
+class ParameterOption(BaseOption):
+    def __init__(self, parameter):
+        self.parameter = parameter
+
+    def apply_visitor(self, visitor):
+        visitor.visit_parameter_option(self)
 
 class BaseTypeParser:
     def __init__(self, type_name):
@@ -69,6 +88,9 @@ class BaseParameter:
         return []
 
     def parameters_set(self, existing_parameters):
+        return []
+
+    def next_options(self, existing_parameters):
         return []
 
     def can_be_skipped(self):
@@ -119,6 +141,9 @@ class PositionalParameter(TypedSingleParameter):
         parsed_token = self.type_parser.parse(self.name, raw_token)
         return (Match(self.name, parsed_token), self.skip_token(raw_token, line))
 
+    def next_options(self, line, existing_parameters):
+        return [ ParameterOption(self) ] if self.extract_token(line) is None else []
+
     def can_be_skipped(self):
         return not self.required
 
@@ -134,6 +159,12 @@ class NamedParameter(TypedSingleParameter):
 
     def extract_value_token(self, line):
         return self.extract_token(line)    
+
+    def next_options(self, line, existing_parameters):
+        if self.extract_token(line) == self.name:
+            return [ ParameterOption(self) ]
+        else:
+            return [ ConstOption(self.name) ]
 
     def match(self, line, existing_parameters):
         name_token = self.extract_name_token(line)
@@ -178,6 +209,9 @@ class ConstParameter(SingleParameter):
     def parameters_set(self, existing_parameters):
         return [ self.keyword ] if self.is_set(existing_parameters) else []
 
+    def next_options(self, line, existing_parameters):
+        return [ ConstOption(self.keyword) ] if self.extract_token(line) is None else []
+
     def can_be_skipped(self):
         return not self.required
 
@@ -215,6 +249,23 @@ class ParameterGroup(BaseParameter):
             set_ones = map(lambda i: i.parameters_set(existing_parameters), self.parameters)
             output += itertools.chain.from_iterable(set_ones)
         return output
+
+    def next_options(self, line, existing_parameters):
+        options = []
+        for parameter in self.parameters:
+            if parameter.is_set(existing_parameters):
+                continue
+            options += parameter.next_options(line, existing_parameters)
+            if not parameter.can_be_skipped():
+                break
+        # If we have a mix of parameters and constants, return the parameters
+        visitor = utils.ParameterOptionVisitor()
+        for option in options:
+            option.apply_visitor(visitor)
+        if any(visitor.parameters):
+            return visitor.parameters
+        else:
+            return visitor.tokens
 
     def is_set(self, existing_parameters):
         return all([i.is_set(existing_parameters) for i in self.parameters])
@@ -258,6 +309,17 @@ class ParameterChoice(BaseParameter):
         set_ones = map(lambda i: i.parameters_set(existing_parameters), self.choices)
         return list(itertools.chain.from_iterable(set_ones))
 
+    def next_options(self, line, existing_parameters):
+        matching_choice = self._find_matching_choice(existing_parameters)
+        if matching_choice:
+            return matching_choice.next_options(line, existing_parameters)
+        output = []
+        for choice in self.choices:
+            if choice.is_set(existing_parameters):
+                continue
+            output += choice.next_options(line, existing_parameters)
+        return output
+
     def is_set(self, existing_parameters):
         matched = [i.is_set(existing_parameters) for i in self.choices]
         return any(matched)
@@ -272,7 +334,7 @@ class ParameterParser:
     def __init__(self, root_parameters):
         self._root_parameter = ParameterGroup(root_parameters)
 
-    def parse(self, line):
+    def _parse_line(self, line):
         output = {}
         while any(line):
             (match, line) = self._root_parameter.match(line, output)
@@ -282,6 +344,18 @@ class ParameterParser:
                 raise DuplicateParameterException(match.name)
             output[match.name] = match.value
             line = line.lstrip()
+        return (output, line)
+
+    def generate_next_parameters(self, line):
+        try:
+            output, line = self._parse_line(line)
+            return (self._root_parameter.next_options(line, output), output)
+        except Exception as ex:
+            print ex
+            return ([], {})
+
+    def parse(self, line):
+        output, line = self._parse_line(line)
         if any(line):
             raise ParameterParsingException(line) 
         if not self._root_parameter.is_fulfilled(output):

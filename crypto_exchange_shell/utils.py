@@ -43,6 +43,17 @@ from Crypto import Random
 from dateutil.tz import tzutc, tzlocal
 from models import CandleTicks
 
+class ParameterOptionVisitor:
+    def __init__(self):
+        self.tokens = []
+        self.parameters = []
+
+    def visit_const_option(self, option):
+        self.tokens.append(option)
+
+    def visit_parameter_option(self, option):
+        self.parameters.append(option)
+
 def format_float(number, number_format = '{0:.8f}'):
     # Format it, then remove right zeroes and remove dot if all decimals are gone
     return number_format.format(number).rstrip('0').rstrip('.')
