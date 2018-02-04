@@ -66,6 +66,10 @@ def datetime_from_utc_time(str_time):
 def show_operation_dialog():
     running = True
     output = None
+    all_history = [
+        readline.get_history_item(i) for i in range(1, readline.get_current_history_length() + 1)
+    ]
+    readline.clear_history()
     while running:
         try:
             line = raw_input('Type "yes" or "no" to confirm or decline the operation: ')
@@ -81,6 +85,8 @@ def show_operation_dialog():
         readline.remove_history_item(readline.get_current_history_length() - 1)
         if output is not None:
             break
+    for item in all_history:
+        readline.add_history(item)
     return output or False
 
 def encrypt(data, passphrase):
