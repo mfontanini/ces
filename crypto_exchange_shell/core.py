@@ -26,9 +26,9 @@
 # either expressed or implied, of the FreeBSD Project.
 
 class Core:
-    def __init__(self, exchange_handle, cmd_manager, output_manager, address_book, price_db):
+    def __init__(self, exchange_handle, cmd_manager, output_manager, address_book, coin_db):
         self.exchange_handle = exchange_handle
         self.cmd_manager = cmd_manager
         self.output_manager = output_manager
         self.address_book = address_book
-        self.price_db = price_db
+        self.coin_db = coin_db

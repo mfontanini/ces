@@ -35,7 +35,7 @@ from crypto_exchange_shell.exchanges.binance_wrapper import BinanceWrapper
 from crypto_exchange_shell.commands import CommandManager
 from crypto_exchange_shell.shell_completer import ShellCompleter
 from crypto_exchange_shell.core import Core
-from crypto_exchange_shell.price_database import PriceDatabase
+from crypto_exchange_shell.coin_database import CoinDatabase
 from crypto_exchange_shell.config_manager import ConfigManager
 from crypto_exchange_shell.output_manager import OutputManager
 from crypto_exchange_shell.exceptions import *
@@ -91,14 +91,14 @@ except Exception as ex:
     print 'Failed to initialize storage: {0}'.format(ex)
     exit(1)
 
-price_db = PriceDatabase()
-print 'Fetching latest crypto currency prices...'
-price_db.wait_for_data()
+coin_db = CoinDatabase()
+print 'Fetching latest crypto currency metadata...'
+coin_db.wait_for_data()
 
 running = True
 output_manager = OutputManager()
 cmd_manager = CommandManager()
-core = Core(handle, cmd_manager, output_manager, address_book, price_db)
+core = Core(handle, cmd_manager, output_manager, address_book, coin_db)
 completer = ShellCompleter(core)
 while running:
     try:
@@ -172,4 +172,4 @@ while running:
     except Exception as ex:
         print 'Error: {0}'.format(ex)
         traceback.print_exc()
-price_db.stop()
+coin_db.stop()

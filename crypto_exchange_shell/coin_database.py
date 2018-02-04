@@ -30,17 +30,32 @@ import threading
 import json
 from exceptions import *
 
-class PriceDatabase:
+class CoinMetadata:
+    def __init__(self, name, price, rank, volume_24h, market_cap, available_supply, total_supply,
+                 max_supply, change_1h, change_24h, change_7d):
+        self.name = name
+        self.price = price
+        self.rank = rank
+        self.volume_24h = volume_24h
+        self.market_cap = market_cap
+        self.available_supply = available_supply
+        self.total_supply = total_supply
+        self.max_supply = max_supply
+        self.change_1h = change_1h
+        self.change_24h = change_24h
+        self.change_7d = change_7d
+
+class CoinDatabase:
     CMC_URL = 'https://api.coinmarketcap.com/v1/ticker/'
 
     def __init__(self, convert=None):
         self._convert = convert
         self._running = True
-        self._price_key = 'price_usd'
-        self._prices = {}
-        self._prices_condition = threading.Condition()
+        self._price_suffix = 'usd'
+        self._metadata = {}
+        self._metadata_condition = threading.Condition()
         self._stop_condition = threading.Condition()
-        self._update_thread = threading.Thread(target=self.poll_prices)
+        self._update_thread = threading.Thread(target=self.poll_data)
         self._update_thread.start()
 
     def stop(self):
@@ -50,31 +65,46 @@ class PriceDatabase:
         self._update_thread.join()
 
     def wait_for_data(self):
-        with self._prices_condition:
-            if len(self._prices) == 0:
-                self._prices_condition.wait()
+        with self._metadata_condition:
+            if len(self._metadata) == 0:
+                self._metadata_condition.wait()
 
     def get_currency_price(self, code):
-        with self._prices_condition:
-            if code in self._prices:
-                return self._prices[code]
+        return self.get_currency_metadata(code).price
+
+    def get_currency_metadata(self, code):
+        with self._metadata_condition:
+            if code in self._metadata:
+                return self._metadata[code]
             else:
                 raise UnknownCurrencyException(code)
 
-    def poll_prices(self):
+    def poll_data(self):
         while self._running:
             result = None
             try:
-                raw_result = requests.get(PriceDatabase.CMC_URL)
+                raw_result = requests.get(CoinDatabase.CMC_URL)
                 result = json.loads(raw_result.text)
             except Exception as ex:
                 # TODO: somehow log this
                 pass
             if result is not None:
-                with self._prices_condition:
+                with self._metadata_condition:
                     for entry in result:
-                        self._prices[entry['symbol']] = float(entry[self._price_key])
-                    self._prices_condition.notify_all()
+                        self._metadata[entry['symbol']] = CoinMetadata(
+                            entry['name'],
+                            float(entry['price_' + self._price_suffix]),
+                            int(entry['rank']),
+                            float(entry['24h_volume_' + self._price_suffix]),
+                            float(entry['market_cap_' + self._price_suffix]),
+                            float(entry['available_supply']),
+                            float(entry['total_supply']),
+                            None if entry['max_supply'] is None else float(entry['max_supply']),
+                            float(entry['percent_change_1h']),
+                            float(entry['percent_change_24h']),
+                            float(entry['percent_change_7d'])
+                        )
+                    self._metadata_condition.notify_all()
             with self._stop_condition:
                 # Sleep for 5 minutes
                 self._stop_condition.wait(60 * 5)

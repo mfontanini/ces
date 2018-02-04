@@ -170,7 +170,7 @@ is operating. ''',
         params = self.PARAMETER_PARSER.parse(raw_params)
         base_currency_code = params['base-currency']
         market_currency_code = params['market-currency']
-        price = core.price_db.get_currency_price(base_currency_code)
+        price = core.coin_db.get_currency_price(base_currency_code)
         result = core.exchange_handle.get_market_state(base_currency_code, market_currency_code)
         make_price = lambda i: utils.make_price_string(i, base_currency_code, price)
         data = [
@@ -211,7 +211,7 @@ class OrderbookCommand(BaseCommand):
         params = self.PARAMETER_PARSER.parse(raw_params)
         base_code = params['base-currency']
         market_code = params['market-currency']
-        price = core.price_db.get_currency_price(base_code)
+        price = core.coin_db.get_currency_price(base_code)
         (buy_orderbook, sell_orderbook) = core.exchange_handle.get_orderbook(
             base_code,
             market_code
@@ -248,7 +248,7 @@ class WalletsCommand(BaseCommand):
             # Stop once we reach 0 balances
             if wallet.balance == 0:
                 break
-            price = core.price_db.get_currency_price(wallet.currency.code)
+            price = core.coin_db.get_currency_price(wallet.currency.code)
             data.append([
                 '{0} ({1})'.format(wallet.currency.name, wallet.currency.code),
                 utils.make_price_string(wallet.available, wallet.currency.code, price),
@@ -281,7 +281,7 @@ class WalletCommand(BaseCommand):
     def execute(self, core, raw_params):
         params = self.PARAMETER_PARSER.parse(raw_params)
         currency = core.exchange_handle.get_currency(params['currency'])
-        price = core.price_db.get_currency_price(currency.code)
+        price = core.coin_db.get_currency_price(currency.code)
         wallet = core.exchange_handle.get_wallet(currency.code)
         make_price = lambda i: utils.make_price_string(i, currency.code, price)
         data = [
@@ -564,7 +564,7 @@ Another example, selling all of our units of ETH at 1 BTC each:
             market_currency_code,
             rate
         )
-        price = core.price_db.get_currency_price(base_currency_code)
+        price = core.coin_db.get_currency_price(base_currency_code)
         data = [
             ['Exchange', 'Amount', 'Rate', 'Total price'],
         ]
@@ -663,7 +663,7 @@ Another example, buying all of our units of ETH at 1 BTC each:
             market_currency_code,
             rate
         )
-        price = core.price_db.get_currency_price(base_currency_code)
+        price = core.coin_db.get_currency_price(base_currency_code)
         data = [
             ['Exchange', 'Amount', 'Rate', 'Total price'],
         ]
@@ -758,7 +758,7 @@ Another example, 1 BTC:
         data = [
             ['Currency', 'Amount', 'Tx fee', 'Address']
         ]
-        price = core.price_db.get_currency_price(currency.code)
+        price = core.coin_db.get_currency_price(currency.code)
         data.append([
             currency.code,
             utils.make_price_string(amount - currency.withdraw_fee, currency.code, price),
@@ -996,7 +996,6 @@ class AddressBookCommand(BaseCommand):
         'short_description' : 'manage address book',
         'long_description' : ''
     }
-    VALID_ACTIONS = ['add', 'remove', 'list', 'rename']
 
     def __init__(self):
         BaseCommand.__init__(self, 'address_book', self.HELP_TEMPLATE)
@@ -1040,6 +1039,45 @@ class AddressBookCommand(BaseCommand):
             return map(lambda i: i.name, core.address_book.get_entries())
         return []
 
+class CoinInfoCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([
+        PositionalParameter('currency', parameter_type=str)
+    ])
+    HELP_TEMPLATE = {
+        'usage' : '{0} <currency>',
+        'short_description' : 'print information about a currency',
+        'long_description' : 'Prints the information about a currency',
+        'examples' : '''Fetch the information about Ethereum:
+
+{0} ETH'''
+    }
+
+    def __init__(self):
+        BaseCommand.__init__(self, 'coin_info', self.HELP_TEMPLATE)
+
+    def execute(self, core, raw_params):
+        params = self.PARAMETER_PARSER.parse(raw_params)
+        metadata = core.coin_db.get_currency_metadata(params['currency'])
+        ff = utils.format_float
+        data = [
+            ['Name', metadata.name],
+            ['Price', '${0}'.format(ff(metadata.price))],
+            ['24h volume', '${0}'.format(ff(metadata.volume_24h))],
+            ['Market cap', '${0}'.format(ff(metadata.market_cap))],
+            ['Available supply', '{0} {1}'.format(ff(metadata.available_supply), params['currency'])],
+            ['Total supply', '{0} {1}'.format(ff(metadata.total_supply), params['currency'])],
+        ]
+        if metadata.max_supply is not None:
+            data.append(['Max supply', '{0} {1}'.format(ff(metadata.max_supply), params['currency'])])
+        data += [
+            ['Change 1h', '{0}%'.format(ff(metadata.change_1h))],
+            ['Change 24h', '{0}%'.format(ff(metadata.change_24h))],
+            ['Change 7d', '{0}%'.format(ff(metadata.change_7d))],
+        ]
+        table = AsciiTable(data, '{0} information'.format(params['currency']))
+        table.inner_heading_row_border = False
+        print table.table
+
 class CommandManager:
     def __init__(self):
         self._commands = {}
@@ -1058,6 +1096,7 @@ class CommandManager:
         self.add_command(DepositAddressCommand())
         self.add_command(CandlesCommand())
         self.add_command(AddressBookCommand())
+        self.add_command(CoinInfoCommand())
         self.add_command(UsageCommand())
         self.add_command(HelpCommand())
 
