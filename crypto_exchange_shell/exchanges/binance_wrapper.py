@@ -65,7 +65,7 @@ class BinanceWrapper(BaseExchangeWrapper):
     def _perform_request(self, request_lambda):
         try:
             output = request_lambda()
-            if output.get('success', True) == False:
+            if type(output) is dict and output.get('success', True) == False:
                if output['msg']['code'] == -1021:
                    raise ExchangeAPIException('Request timed out')
                raise ExchangeAPIException(output['msg']['msg'])
