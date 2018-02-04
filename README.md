@@ -35,7 +35,7 @@ Only after doing that and validating you have enough coins to perform the operat
 
 There's several commands available that allow you to either inspect coin/price related information or perform actions. For example, these are the ones available at the time of writing:
 
-![](https://i.imgur.com/3VVaGC9.png)
+![](https://i.imgur.com/VNkIkbj.png)
 
 ## Which exchanges are supported?
 
