@@ -823,7 +823,7 @@ class HelpCommand(BaseCommand):
     def execute(self, core, raw_params):
         self.PARAMETER_PARSER.parse(raw_params)
         data = [['Command', 'Help']]
-        for cmd in core.cmd_manager.get_command_names():
+        for cmd in sorted(core.cmd_manager.get_command_names()):
             data.append([cmd, core.cmd_manager.get_command(cmd).short_usage()])
         table = AsciiTable(data, 'Commands')
         print table.table
