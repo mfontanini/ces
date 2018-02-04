@@ -1000,6 +1000,11 @@ class AddressBookCommand(BaseCommand):
             ParameterGroup([
                 ConstParameter('action', keyword='remove'),
                 NamedParameter('name', parameter_type=str),
+            ]),
+            ParameterGroup([
+                ConstParameter('action', keyword='rename'),
+                NamedParameter('name', parameter_type=str),
+                NamedParameter('set', parameter_type=str),
             ])
         ])
     ])
@@ -1008,7 +1013,7 @@ class AddressBookCommand(BaseCommand):
         'short_description' : 'manage address book',
         'long_description' : ''
     }
-    VALID_ACTIONS = ['add', 'remove', 'list']
+    VALID_ACTIONS = ['add', 'remove', 'list', 'rename']
 
     def __init__(self):
         BaseCommand.__init__(self, 'address_book', self.HELP_TEMPLATE)
@@ -1043,17 +1048,25 @@ class AddressBookCommand(BaseCommand):
                 print 'Removed "{0}" entry from address book'.format(name)
             else:
                 print '"{0}" is not in address book'.format(name)
+        elif action == 'rename':
+            core.address_book.rename_entry(name, params['set'])
+            print 'Renamed "{0}" entry to "{1}"'.format(name, params['set'])
 
     def generate_parameters(self, core, current_parameters):
         if len(current_parameters) == 0:
             return AddressBookCommand.VALID_ACTIONS
         if len(current_parameters) == 1 and current_parameters[0] in ['add', 'list']:
             return map(lambda i: i.code, core.exchange_handle.get_currencies())
-        if current_parameters[0] == 'remove':
+        if current_parameters[0] in ['remove', 'rename']:
+            options = ['name']
+            if current_parameters[0] == 'rename':
+                options.append('set')
             if len(current_parameters) == 1:
-                return self.generate_parameter_options(current_parameters, ['name'])
+                return self.generate_parameter_options(current_parameters, options)
             elif len(current_parameters) == 2:
                 return map(lambda i: i.name, core.address_book.get_entries())
+            else:
+                return self.generate_parameter_options(current_parameters, options)
         if len(current_parameters) >= 2 and current_parameters[0] == 'add':
             return self.generate_parameter_options(current_parameters, ['name', 'address'])
         return []

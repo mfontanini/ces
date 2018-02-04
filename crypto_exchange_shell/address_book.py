@@ -60,6 +60,14 @@ class AddressBook:
         del self._entries[name]
         return True
 
+    def rename_entry(self, name, new_name):
+        if name not in self._entries:
+            return False
+        entry = self._entries[name]
+        self.remove_entry(name)
+        self.add_entry(new_name, entry.currency.code, entry.address)
+        return True
+
     def get_entries(self, currency_code=None):
         output = []
         for name, address in self._entries.items():
