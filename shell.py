@@ -117,7 +117,7 @@ while running:
     try:
         command = cmd_manager.get_command(tokens[0])
         params = line.strip()[len(tokens[0]):].strip()
-        cmd_manager.execute(core, tokens[0], params)
+        cmd_manager.execute_command(core, tokens[0], params)
     except ExchangeAPIException as ex:
         print str(ex)
         output_manager.log_error(

@@ -109,6 +109,10 @@ class BaseCommand:
             output += self._generate_options(core, option.parameter.name, existing_parameters)
         return output
 
+    def execute_command(self, core, raw_params):
+        params = self.PARAMETER_PARSER.parse(raw_params)
+        self.execute(core, params)
+
 class MarketsCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
         PositionalParameter('base-currency', parameter_type=str, required=False)
@@ -128,8 +132,7 @@ will be displayed.''',
     def __init__(self):
         BaseCommand.__init__(self, 'markets')
 
-    def execute(self, core, raw_params):
-        params = self.PARAMETER_PARSER.parse(raw_params)
+    def execute(self, core, params):
         if len(params) == 0:
             data = [['Currency', 'Name']]
             currencies = core.exchange_handle.get_base_currencies()
@@ -164,8 +167,7 @@ is operating. ''',
     def __init__(self):
         BaseCommand.__init__(self, 'market')
 
-    def execute(self, core, raw_params):
-        params = self.PARAMETER_PARSER.parse(raw_params)
+    def execute(self, core, params):
         base_currency_code = params['base-currency']
         market_currency_code = params['market-currency']
         price = core.coin_db.get_currency_price(base_currency_code)
@@ -205,8 +207,7 @@ class OrderbookCommand(BaseCommand):
             '{0:.2f} {1}'.format(order.quantity, market_currency_code)
         ]
 
-    def execute(self, core, raw_params):
-        params = self.PARAMETER_PARSER.parse(raw_params)
+    def execute(self, core, params):
         base_code = params['base-currency']
         market_code = params['market-currency']
         price = core.coin_db.get_currency_price(base_code)
@@ -276,8 +277,7 @@ class WalletCommand(BaseCommand):
     def __init__(self):
         BaseCommand.__init__(self, 'wallet')
 
-    def execute(self, core, raw_params):
-        params = self.PARAMETER_PARSER.parse(raw_params)
+    def execute(self, core, params):
         currency = core.exchange_handle.get_currency(params['currency'])
         price = core.coin_db.get_currency_price(currency.code)
         wallet = core.exchange_handle.get_wallet(currency.code)
@@ -374,8 +374,7 @@ on the parameter used''',
     def __init__(self):
         BaseCommand.__init__(self, 'orders')
 
-    def execute(self, core, raw_params):
-        params = self.PARAMETER_PARSER.parse(raw_params)
+    def execute(self, core, params):
         order_type = params['order-type']
         if order_type == 'open':
             data = [['Id', 'Exchange', 'Date', 'Type', 'Bid/Ask', 'Amount (filled/total)']]
@@ -428,8 +427,7 @@ on the market <base-currency>/<market-currency>''',
     def __init__(self):
         BaseCommand.__init__(self, 'cancel')
 
-    def execute(self, core, raw_params):
-        params = self.PARAMETER_PARSER.parse(raw_params)
+    def execute(self, core, params):
         base_currency_code = params['base-currency']
         market_currency_code = params['market-currency']
         order_id = params['order']
@@ -529,8 +527,7 @@ Another example, selling all of our units of ETH at 1 BTC each:
             return None
         return amount
 
-    def execute(self, core, raw_params):
-        params = self.PARAMETER_PARSER.parse(raw_params)
+    def execute(self, core, params):
         base_currency_code = params['base-currency']
         market_currency_code = params['market-currency']
         amount = params['amount']
@@ -628,8 +625,7 @@ Another example, buying all of our units of ETH at 1 BTC each:
                 return None
         return amount
 
-    def execute(self, core, raw_params):
-        params = self.PARAMETER_PARSER.parse(raw_params)
+    def execute(self, core, params):
         base_currency_code = params['base-currency']
         market_currency_code = params['market-currency']
         amount = params['amount']
@@ -725,8 +721,7 @@ Another example, 1 BTC:
         # For the memo/payment id we don't want parsing, we'll handle that ourselves
         BaseCommand.__init__(self, 'withdraw')
 
-    def execute(self, core, raw_params):
-        params = self.PARAMETER_PARSER.parse(raw_params)
+    def execute(self, core, params):
         currency_code = params['currency']
         amount = params['amount']
         if 'address' in params:
@@ -805,8 +800,7 @@ inside [] are optional.''',
     def __init__(self):
         BaseCommand.__init__(self, 'usage')
 
-    def execute(self, core, raw_params):
-        params = self.PARAMETER_PARSER.parse(raw_params)
+    def execute(self, core, params):
         print core.cmd_manager.get_command(params['command']).usage()
 
     def generate_options(self, core, parameter_name, existing_parameters):
@@ -850,8 +844,7 @@ class DepositAddressCommand(BaseCommand):
     def __init__(self):
         BaseCommand.__init__(self, 'deposit_address')
 
-    def execute(self, core, raw_params):
-        params = self.PARAMETER_PARSER.parse(raw_params)
+    def execute(self, core, params):
         currency_code = params['currency']
         address = core.exchange_handle.get_deposit_address(currency_code)
         if address is None:
@@ -893,8 +886,7 @@ BTC/XLM market:
     def __init__(self):
         BaseCommand.__init__(self, 'candles')
 
-    def execute(self, core, raw_params):
-        params = self.PARAMETER_PARSER.parse(raw_params)
+    def execute(self, core, params):
         base_currency_code = params['base-currency']
         market_currency_code = params['market-currency']
         interval_string = params.get('interval', None)
@@ -998,8 +990,7 @@ class AddressBookCommand(BaseCommand):
     def __init__(self):
         BaseCommand.__init__(self, 'address_book')
 
-    def execute(self, core, raw_params):
-        params = self.PARAMETER_PARSER.parse(raw_params)
+    def execute(self, core, params):
         action = params['action']
         currency_code = params.get('currency', None)
         address = params.get('address', None)
@@ -1053,8 +1044,7 @@ class CoinInfoCommand(BaseCommand):
     def __init__(self):
         BaseCommand.__init__(self, 'coin_info')
 
-    def execute(self, core, raw_params):
-        params = self.PARAMETER_PARSER.parse(raw_params)
+    def execute(self, core, params):
         metadata = core.coin_db.get_currency_metadata(params['currency'])
         ff = utils.format_float
         data = [
@@ -1101,10 +1091,10 @@ class CommandManager:
     def add_command(self, command):
         self._commands[command.name] = command
 
-    def execute(self, handle, command, parameters):
+    def execute_command(self, handle, command, parameters):
         if command not in self._commands:
             raise UnknownCommandException(command)
-        self._commands[command].execute(handle, parameters)    
+        self._commands[command].execute_command(handle, parameters)    
 
     def get_command_names(self):
         return self._commands.keys()
