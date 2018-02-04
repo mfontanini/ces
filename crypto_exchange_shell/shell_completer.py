@@ -34,21 +34,33 @@ except ImportError: #Window systems don't have GNU readline
 class ShellCompleter:
     def __init__(self, core):
         self._core = core
+        self._last_state = None
         readline.parse_and_bind("tab: complete")
         readline.set_completer(self.generate_suggestions)
         readline.set_completer_delims(' \t\n`~!@#$%^&*()=+[{]}\\|;:\'",<>/?')
 
     def generate_suggestions(self, text, state):
+        if self._last_state is not None:
+            if self._last_state['text'] == text and \
+               self._last_state['index'] == readline.get_begidx() and \
+               self._last_state['state'] == state:
+               return self._last_state['output']
         try:
             if readline.get_begidx() == 0:
                 # First word on buffer, generate names
-                return self._generate_commands(text, state)
+                output = self._generate_commands(text, state)
             else:
                 # This may be a parameter to our current command
-                return self._generate_parameters(text, state)
+                output = self._generate_parameters(text, state)
         except Exception as ex:
-            print 'Error: {0}'.format(ex)
             raise ex
+        self._last_state = {
+            'text' : text,
+            'index' : readline.get_begidx(),
+            'state' : state,
+            'output' : output
+        }
+        return output
 
     def _generate_commands(self, text, state):
         if state == 0:
