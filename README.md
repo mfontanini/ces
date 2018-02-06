@@ -47,7 +47,7 @@ Let me start by saying **you should use it under your own risk**.
 
 But yes, if you're concerned about something stealing your API keys then you shouldn't be as long as you trust the exchange wrappers used. This currently uses [python-bittrex](https://github.com/ericsomdahl/python-bittrex) and [python-binance](https://github.com/sammchardy/python-binance) to interact which each exchange's API, so there's nothing fishy. 
 
-If you're concerned about your funds being lost in badly interpreted/typed transaction (e.g. buying Bitcoin for $100 when it's worth $1000), then be sure you can always review your actions. Whenever an order is about to be placed or a withdraw is about to be made, a confirmation dialog will show up and you'll need to explicitly type "yes" for the action to be carried out. e.g.
+If you're concerned about your funds being lost in badly interpreted/typed transaction (e.g. selling Bitcoin for $100 when it's worth $1000), then be sure you can always review your actions. Whenever an order is about to be placed or a withdraw is about to be made, a confirmation dialog will show up and you'll need to explicitly type "yes" for the action to be carried out. e.g.
 
 ![](https://i.imgur.com/UEcANQe.png)
 
