@@ -565,7 +565,7 @@ Another example, selling all of our units of ETH at 1 BTC each:
         ]
         data.append([
             '{0}/{1}'.format(base_currency_code, market_currency_code),
-            amount,
+            '{0} {1}'.format(amount, market_currency_code),
             utils.make_price_string(rate, base_currency_code, price),
             utils.make_price_string(rate * amount, base_currency_code, price),
         ])
