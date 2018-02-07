@@ -33,6 +33,8 @@ import sys
 import hashlib
 import base64
 import getpass
+import re
+import math
 try:
     import readline
 except ImportError: #Window systems don't have GNU readline
@@ -145,3 +147,18 @@ def round_order_value(step, value):
         if output > value:
             output = float(meta_format.format(output - step))
         return output
+
+# Finds an appropriate float format string so that it has at least 5 decimals and
+# there's at least 3 non zero digits in it
+def make_appropriate_float_format_string(value):
+    power = int(round(math.log10(value)))
+    formatted_value = format_float(value)
+    match = re.search(r'[^0\.]', formatted_value)
+    if match:
+        decimals = match.start() - 1
+    else:
+        raise Exception('Non float found')
+    decimals = max(decimals + 2, 5)
+    if power > 0:
+        decimals -= power
+    return '{{0:0.{0}f}}'.format(decimals)

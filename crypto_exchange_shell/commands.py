@@ -935,17 +935,15 @@ BTC/XLM market:
             column.reverse()
             matrix.append(column)
 
-        y_label_length = 0
-        y_labels = []
-        for i in range(height):
-            value = lowest + (i / float(height)) * (highest - lowest)
-            y_label_length = max(y_label_length, len('{0:.5f}'.format(value)))
-            y_labels.append(value)
+        y_values = map(lambda i: lowest + (i / float(height)) * (highest - lowest), range(height))
+        y_values.reverse()
+        y_fmt_string = utils.make_appropriate_float_format_string(max(y_values))
+        top_y_length = len(y_fmt_string.format(y_values[0]))
 
-        y_labels.reverse()
-        y_fmt_string = u'{{0:{0}.5f}} | '.format(y_label_length)
         for i in range(height):
-            sys.stdout.write(y_fmt_string.format(y_labels[i]))
+            y_label = y_fmt_string.format(y_values[i])
+            # Append enough spaces to padd the length difference with the top label 
+            sys.stdout.write('{0}{1} | '.format(y_label, (top_y_length - len(y_label)) * ' '))
             for column in matrix:
                 sys.stdout.write(column[i] + " ")
             sys.stdout.write('\n')
@@ -955,7 +953,7 @@ BTC/XLM market:
         for i in range(len(candles) - 1, 0, -4):
             x_labels.append(utils.make_candle_label(candles[i].timestamp, interval))
         x_labels.reverse()
-        print ' ' * len(y_fmt_string.format(0.0)) + '   '.join(x_labels)
+        print ' ' * top_y_length + '   ' + '   '.join(x_labels)
 
 class AddressBookCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
