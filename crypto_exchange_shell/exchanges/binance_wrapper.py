@@ -279,6 +279,17 @@ class BinanceWrapper(BaseExchangeWrapper):
                                                                              price=rate))
         return result['orderId']
 
+    def withdraw(self, currency_code, amount, address, address_tag):
+        params = {
+            'asset' : currency_code,
+            'amount' : amount,
+            'address' : address,
+        }
+        if address_tag is not None:
+            params['addressTag'] = address_tag
+        result = self._perform_request(lambda:self._handle.withdraw(**params))
+        return result['id']
+
     def get_deposit_address(self, currency_code):
         self.check_valid_currency(currency_code)
         result = self._perform_request(lambda: self._handle.get_deposit_address(asset=currency_code))
