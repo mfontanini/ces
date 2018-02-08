@@ -206,7 +206,7 @@ class BittrexWrapper(BaseExchangeWrapper):
             ))
         return output
 
-    def get_order_history(self):
+    def get_order_history(self, base_currency_code=None, market_currency_code=None):
         result = self._handle.get_order_history()
         self._check_result(result)
         output = []

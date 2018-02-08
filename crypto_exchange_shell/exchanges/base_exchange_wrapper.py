@@ -82,3 +82,6 @@ class BaseExchangeWrapper:
 
     def adjust_order_amount(self, base_currency_code, market_currency_code, amount):
         return amount
+
+    def order_history_needs_asset(self):
+        return False

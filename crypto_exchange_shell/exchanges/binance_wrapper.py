@@ -162,8 +162,25 @@ class BinanceWrapper(BaseExchangeWrapper):
         return output
 
     # Order history in Binance requires a symbol... This doesn't really work
-    def get_order_history(self):
-        return []      
+    def get_order_history(self, base_currency_code=None, market_currency_code=None):
+        exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
+        result = self._perform_request(lambda: self._handle.get_my_trades(symbol=exchange_name))
+        output = []
+        for item in result:
+            amount = float(item['qty'])
+            output.append(TradeOrder(
+                item["orderId"],
+                self._currencies[base_currency_code],
+                self._currencies[market_currency_code],
+                None,
+                dateparser.parse(str(item["time"])),
+                amount,
+                0, # Amount remaining
+                float(item["price"]),
+                float(item["price"]),
+                OrderType.limit_buy if item["isBuyer"] else OrderType.limit_sell
+            ))
+        return output
 
     def get_withdrawal_history(self):
         result = self._perform_request(lambda: self._handle.get_withdraw_history())
@@ -369,3 +386,6 @@ class BinanceWrapper(BaseExchangeWrapper):
             return amount
         order_filter = self._filters[exchange_name]
         return utils.round_order_value(order_filter.amount_step, amount)
+
+    def order_history_needs_asset(self):
+        return True

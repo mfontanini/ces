@@ -39,19 +39,20 @@ class BaseCommand:
     def __init__(self, name):
         self.name = name
 
-    def usage(self):
+    def usage(self, core):
+        template = self.help_template(core)
         data = [
-            ['Usage'['usage'].format(self.name)],
-            ['Description'['long_description'].format(self.name)],
+            ['Usage', template['usage'].format(self.name)],
+            ['Description', template['long_description'].format(self.name)],
         ]
-        if 'examples' in self.HELP_TEMPLATE:
-            data.append(['Examples'['examples'].format(self.name)])
+        if 'examples' in template:
+            data.append(['Examples', template['examples'].format(self.name)])
         table = AsciiTable(data, self.name)
         table.inner_row_border = True
         return table.table
 
-    def short_usage(self):
-        return self.HELP_TEMPLATE['short_description']
+    def short_usage(self, core):
+        return self.help_template(core)['short_description']
 
     def execute(self, core, params):
         pass
@@ -74,6 +75,12 @@ class BaseCommand:
 
     def split_args(self, raw_params):
         return filter(lambda i: len(i) > 0, raw_params.strip().split(' '))
+
+    def parameter_parser(self, core):
+        return self.PARAMETER_PARSER
+
+    def help_template(self, core):
+        return self.HELP_TEMPLATE
 
     def generate_parameter_options(self, current_parameters, options):
         # e.g. don't a valid option if the last parameter is already an option
@@ -99,7 +106,7 @@ class BaseCommand:
         return []
 
     def generate_parameters(self, core, params):
-        (options, existing_parameters) = self.PARAMETER_PARSER.generate_next_parameters(params)
+        (options, existing_parameters) = self.parameter_parser(core).generate_next_parameters(params)
         visitor = utils.ParameterOptionVisitor()
         for option in options:
             option.apply_visitor(visitor)
@@ -110,7 +117,7 @@ class BaseCommand:
         return output
 
     def execute_command(self, core, raw_params):
-        params = self.PARAMETER_PARSER.parse(raw_params)
+        params = self.parameter_parser(core).parse(raw_params)
         self.execute(core, params)
 
 class MarketsCommand(BaseCommand):
@@ -355,13 +362,23 @@ class WithdrawalsCommand(BaseCommand):
         print table.table
 
 class OrdersCommand(BaseCommand):
-    PARAMETER_PARSER = ParameterParser([
+    DEFAULT_PARAMETER_PARSER = ParameterParser([
         ParameterChoice([
             ConstParameter('order-type', keyword='open'),
             ConstParameter('order-type', keyword='completed'),
+        ]),
+    ])
+    ASSET_PARAMETER_PARSER = ParameterParser([
+        ParameterChoice([
+            ConstParameter('order-type', keyword='open'),
+            ParameterGroup([
+                PositionalParameter('base-currency', parameter_type=str),
+                PositionalParameter('market-currency', parameter_type=str),
+                ConstParameter('order-type', keyword='completed'),
+            ])
         ])
     ])
-    HELP_TEMPLATE = {
+    DEFAULT_HELP_TEMPLATE = {
         'usage' : '{0} <open|completed>',
         'short_description' : 'get the active and settled orders',
         'long_description' : '''Get the list of orders either completed or open depending
@@ -370,9 +387,27 @@ on the parameter used''',
 
 {0} open'''
     }
+    ASSET_HELP_TEMPLATE = {
+        'usage' : '{0} <open|<base-currency> <market-currency> <completed>>',
+        'short_description' : 'get the active and settled orders',
+        'long_description' : '''Get the list of orders either completed or open depending
+on the parameter used. This exchange requires providing a base/market
+currency pair for completed orders.''',
+        'examples' : '''Print the list of all completed orders in the ETH/XLM market:
+
+{0} ETH XLM completed'''
+    }
 
     def __init__(self):
         BaseCommand.__init__(self, 'orders')
+
+    def parameter_parser(self, core):
+        return self.ASSET_PARAMETER_PARSER if core.exchange_handle.order_history_needs_asset() \
+                                           else self.DEFAULT_PARAMETER_PARSER
+
+    def help_template(self, core):
+        return self.ASSET_HELP_TEMPLATE if core.exchange_handle.order_history_needs_asset() \
+                                        else self.DEFAULT_HELP_TEMPLATE
 
     def execute(self, core, params):
         order_type = params['order-type']
@@ -394,7 +429,11 @@ on the parameter used''',
             title = 'Open orders'
         elif order_type == 'completed':
             data = [['Exchange', 'Date', 'Type', 'Price', 'Amount (filled/total)']]
-            for order in core.exchange_handle.get_order_history():
+            orders = core.exchange_handle.get_order_history(
+                params.get('base-currency'),
+                params.get('market-currency'),
+            )
+            for order in orders:
                 data.append([
                     '{0}/{1}'.format(order.base_currency.code, order.market_currency.code),
                     self.format_date(order.date_closed),
@@ -809,7 +848,7 @@ inside [] are optional.''',
         BaseCommand.__init__(self, 'usage')
 
     def execute(self, core, params):
-        print core.cmd_manager.get_command(params['command']).usage()
+        print core.cmd_manager.get_command(params['command']).usage(core)
 
     def generate_options(self, core, parameter_name, existing_parameters):
         if parameter_name == 'command':
@@ -832,7 +871,7 @@ class HelpCommand(BaseCommand):
         self.PARAMETER_PARSER.parse(raw_params)
         data = [['Command', 'Help']]
         for cmd in sorted(core.cmd_manager.get_command_names()):
-            data.append([cmd, core.cmd_manager.get_command(cmd).short_usage()])
+            data.append([cmd, core.cmd_manager.get_command(cmd).short_usage(core)])
         table = AsciiTable(data, 'Commands')
         print table.table
 

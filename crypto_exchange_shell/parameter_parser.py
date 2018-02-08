@@ -46,8 +46,9 @@ class ConstOption(BaseOption):
         visitor.visit_const_option(self)
 
 class ParameterOption(BaseOption):
-    def __init__(self, parameter):
+    def __init__(self, parameter, partially_matched=False):
         self.parameter = parameter
+        self.partially_matched = partially_matched
 
     def apply_visitor(self, visitor):
         visitor.visit_parameter_option(self)
@@ -162,7 +163,7 @@ class NamedParameter(TypedSingleParameter):
 
     def next_options(self, line, existing_parameters):
         if self.extract_token(line) == self.name:
-            return [ ParameterOption(self) ]
+            return [ ParameterOption(self, partially_matched=True) ]
         else:
             return [ ConstOption(self.name) ]
 
@@ -262,10 +263,10 @@ class ParameterGroup(BaseParameter):
         visitor = utils.ParameterOptionVisitor()
         for option in options:
             option.apply_visitor(visitor)
-        if any(visitor.parameters):
+        if any(map(lambda i: i.partially_matched, visitor.parameters)):
             return visitor.parameters
         else:
-            return visitor.tokens
+            return visitor.parameters + visitor.tokens
 
     def is_set(self, existing_parameters):
         return all([i.is_set(existing_parameters) for i in self.parameters])
@@ -319,6 +320,9 @@ class ParameterChoice(BaseParameter):
                 continue
             output += choice.next_options(line, existing_parameters)
         return output
+
+    def can_be_skipped(self):
+        return all(map(lambda i: i.can_be_skipped(), self.choices))
 
     def is_set(self, existing_parameters):
         matched = [i.is_set(existing_parameters) for i in self.choices]
