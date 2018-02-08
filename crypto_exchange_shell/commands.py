@@ -385,7 +385,11 @@ on the parameter used''',
                     self.format_date(order.date_open),
                     order.order_type_string,
                     '{0} {1}'.format(order.limit, order.base_currency.code),
-                    '{0}/{1}'.format(order.amount - order.remaining, order.amount)
+                    '{0}/{1} {2}'.format(
+                        order.amount - order.remaining,
+                        order.amount,
+                        order.market_currency.code
+                    )
                 ])
             title = 'Open orders'
         elif order_type == 'completed':
@@ -396,7 +400,11 @@ on the parameter used''',
                     self.format_date(order.date_closed),
                     order.order_type_string,
                     '{0} {1}'.format(order.price_per_unit, order.base_currency.code),
-                    '{0}/{1}'.format(order.amount - order.remaining, order.amount)
+                    '{0}/{1} {2}'.format(
+                        order.amount - order.remaining,
+                        order.amount,
+                        order.market_currency.code
+                    )
                 ])
             title = 'Completed orders'
         else:
