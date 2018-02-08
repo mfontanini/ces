@@ -247,7 +247,6 @@ class WalletsCommand(BaseCommand):
         BaseCommand.__init__(self, 'wallets')
 
     def execute(self, core, raw_params):
-        self.PARAMETER_PARSER.parse(raw_params)
         wallets = core.exchange_handle.get_wallets()
         data = [['Currency', 'Available balance', 'Pending']]
         for wallet in sorted(wallets, reverse=True, key=lambda i: i.balance):
@@ -309,7 +308,6 @@ class DepositsCommand(BaseCommand):
         BaseCommand.__init__(self, 'deposits')
 
     def execute(self, core, raw_params):
-        self.PARAMETER_PARSER.parse(raw_params)
         has_confirmations = core.exchange_handle.exposes_confirmations
         data = [
             ['Timestamp', 'Amount', 'Transaction id',
@@ -341,14 +339,15 @@ class WithdrawalsCommand(BaseCommand):
         BaseCommand.__init__(self, 'withdrawals')
 
     def execute(self, core, raw_params):
-        self.PARAMETER_PARSER.parse(raw_params)
+        cost_index = 2
         withdrawals = core.exchange_handle.get_withdrawal_history()
-        data = [['Amount', 'Transaction id']]
+        data = [['Timestamp', 'Amount', 'Transaction id']]
         has_cost = any(map(lambda i: i.cost is not None, withdrawals))
         if has_cost:
-            data[0].append('Cost')
+            data[0].insert(2, 'Cost')
         for withdrawal in withdrawals:
             data.append([
+                self.format_date(withdrawal.timestamp),
                 '{0} {1}'.format(withdrawal.amount, withdrawal.currency.code),
                 withdrawal.transaction_id
             ])
@@ -357,7 +356,7 @@ class WithdrawalsCommand(BaseCommand):
                     cost = '0 (cancelled)'
                 else:
                     cost = '{0} {1}'.format(withdrawal.cost, withdrawal.currency.code)
-                data[-1].append(cost)
+                data[-1].insert(cost_index, cost)
         table = AsciiTable(data, 'Withdrawals')
         print table.table
 
@@ -868,7 +867,6 @@ class HelpCommand(BaseCommand):
         BaseCommand.__init__(self, 'help')
 
     def execute(self, core, raw_params):
-        self.PARAMETER_PARSER.parse(raw_params)
         data = [['Command', 'Help']]
         for cmd in sorted(core.cmd_manager.get_command_names()):
             data.append([cmd, core.cmd_manager.get_command(cmd).short_usage(core)])
