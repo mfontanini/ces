@@ -1,4 +1,6 @@
-exchange:
-    exchange_name: an_exchange_name
+exchanges:
+  * name: an_exchange_name
     api_key: your_api_key
     api_secret: your_api_secret
+database:
+  path: configs/config.db
