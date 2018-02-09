@@ -29,6 +29,11 @@ import yaml
 from exceptions import KeyMissingConfigException
 from utils import decrypt_file
 
+class ExchangeConfig:
+    def __init__(self, api_key, api_secret):
+        self.api_key = api_key
+        self.api_secret = api_secret
+
 class ConfigManager:
     def __init__(self):
         pass
@@ -38,14 +43,21 @@ class ConfigManager:
             raise KeyMissingConfigException(key)
 
     def _process_config(self, config):
-        self._ensure_key_is_present(config, 'exchange')
+        self._ensure_key_is_present(config, 'exchanges')
         self._ensure_key_is_present(config, 'database')
-        self._ensure_key_is_present(config['exchange'], 'api_key')
-        self._ensure_key_is_present(config['exchange'], 'api_secret')
-        self._ensure_key_is_present(config['exchange'], 'exchange_name')
-        self.api_key = config['exchange']['api_key']
-        self.api_secret = config['exchange']['api_secret']
-        self.exchange_name = config['exchange']['exchange_name']
+        self._ensure_key_is_present(config['database'], 'path')
+        exchanges = {}
+        if len(config['exchanges']) == 0:
+            raise ConfigException('Exchange list can\'t be empty')
+        for exchange in config['exchanges']:
+            self._ensure_key_is_present(exchange, 'api_key')
+            self._ensure_key_is_present(exchange, 'api_secret')
+            self._ensure_key_is_present(exchange, 'name')
+            exchanges[exchange['name']] = ExchangeConfig(
+                exchange['api_key'],
+                exchange['api_secret']
+            )
+        self.exchanges = exchanges
         self.database_path = config['database']['path']
 
     def load(self, config_file):

@@ -35,7 +35,7 @@ class ConfigException(BaseException):
 
 class KeyMissingConfigException(ConfigException):
     def __init__(self, missing):
-        ConfigException.__init__(self, '"{0}" key not found in config file')
+        ConfigException.__init__(self, '"{0}" key not found in config file'.format(missing))
 
 class UnknownCurrencyException(BaseException):
     def __init__(self, currency_code):

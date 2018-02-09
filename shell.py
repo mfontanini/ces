@@ -48,6 +48,9 @@ parser.add_argument('-c', '--config', type=str, required=True,
                     help='path to configuration file')
 parser.add_argument('-d', '--decrypt', action='store_true',
                     help='decrypt the configuration file')
+parser.add_argument('-e', '--exchange', action='store',
+                    help='specify the exchange to use. Only needed if the '\
+                         'config file has multiple')
 
 try:
     args = parser.parse_args()
@@ -73,15 +76,28 @@ except Exception as ex:
 
 print 'Fetching data from exchange...'
 try:
-    if config_manager.exchange_name == 'bittrex':
-        handle = BittrexWrapper(config_manager.api_key, config_manager.api_secret)
-    elif config_manager.exchange_name == 'binance':
-        handle = BinanceWrapper(config_manager.api_key, config_manager.api_secret)
-    else:
-        print 'Unkown exchange {0}'.format(config_manager.exchange_name)
+    valid_exchanges = ['bittrex', 'binance']
+    for name in config_manager.exchanges:
+        if name not in valid_exchanges:
+            print 'Unknown exchange "{0}"'.format(name)
+            exit(1)
+    if args.exchange and args.exchange not in valid_exchanges:
+        print 'Unknown exchange "{0}"'.format(name)
         exit(1)
+    if len(config_manager.exchanges) > 1 and not args.exchange:
+        print '-e parameter is needed when configuration file has multiple exchanges'
+        exit(1)
+    exchange_name = args.exchange or config_manager.exchanges.keys()[0]
+    api_key = config_manager.exchanges[exchange_name].api_key
+    api_secret = config_manager.exchanges[exchange_name].api_secret
+    if exchange_name == 'bittrex':
+        handle = BittrexWrapper(api_key, api_secret)
+    elif exchange_name == 'binance':
+        handle = BinanceWrapper(api_key, api_secret)
+    else:
+        raise Exception('Unknown exchange {0}'.format(exchange_name))
 except Exception as ex:
-    print 'Failed to create {0} handle: {1}'.format(config_manager.exchange_name, ex)
+    print 'Failed to create {0} handle: {1}'.format(exchange_name, ex)
     exit(1)
 
 try:
