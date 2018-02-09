@@ -61,22 +61,24 @@ The configuration file has to be in [yaml](http://yaml.org/) format. A basic con
 
 ```yaml
 
-exchange:
-    exchange_name: bittrex
-    api_key: 91220aacb69bc6401b1e04e290e022cd
-    api_secret: 9c9e97f59eed930120633191a29bee5f
+exchanges:
+    * name: bittrex
+      api_key: 91220aacb69bc6401b1e04e290e022cd
+      api_secret: 9c9e97f59eed930120633191a29bee5f
 database:
-    path: 'configs/bittrex.db'
+    path: 'configs/config.db'
 ```
 
 If you don't want to put your API keys in yet, you can simply set both fields to _null_. This will allow you to perform publicly accessible read operations like seeing order books, prices, etc.
 
 The database path will be used to create a _sqlite3_ file to store some data. Currently only the address book is stored in it.
 
+Note that you can set multiple exchange's keys, using different exchange names for them (e.g. "bittrex" and "binance"). If you specify multiple of them in your configuration file, you'll need to provide the one you want to use by using the `-e` parameter when running the shell.
+
 ### Running the application
 
 In order to run the application, just execute:
 
 ```bash
-./shell.py -c config_file.yaml
+./shell.py -c configs/config.yaml
 ```
