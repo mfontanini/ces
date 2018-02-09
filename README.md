@@ -75,6 +75,21 @@ The database path will be used to create a _sqlite3_ file to store some data. Cu
 
 Note that you can set multiple exchange's keys, using different exchange names for them (e.g. "bittrex" and "binance"). If you specify multiple of them in your configuration file, you'll need to provide the one you want to use by using the `-e` parameter when running the shell.
 
+#### Encrypting the configuration file
+
+Given that the configuration file will contain your API keys, you may not want it to be stored in plain text on your filesystem. If that's the case, then you can use the `encrypter.py` script in the root of this project. This will encrypt your configuration file using AES in CFB mode and a passphrase you provide. Every time you run the shell, you'll have to provide the decryption key.
+
+For example:
+
+```bash
+# This will encrypt the configs/config.yaml file and will emit the
+# encrypted file into configs/config.yaml.encrypted
+./encrypter.py -e -p configs/config.yaml  > configs/config.yaml.encrypted
+
+# Now run the shell using -d (decrypt)
+./shell.py -c configs/config.yaml.encrypted -d
+```
+
 ### Running the application
 
 In order to run the application, just execute:
