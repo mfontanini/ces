@@ -248,7 +248,7 @@ class WalletsCommand(BaseCommand):
 
     def execute(self, core, raw_params):
         wallets = core.exchange_handle.get_wallets()
-        data = [['Currency', 'Available balance', 'Pending']]
+        data = [['Currency', 'Total balance', 'Available balance', 'Pending/locked balance']]
         for wallet in sorted(wallets, reverse=True, key=lambda i: i.balance):
             # Stop once we reach 0 balances
             if wallet.balance == 0:
@@ -256,6 +256,7 @@ class WalletsCommand(BaseCommand):
             price = core.coin_db.get_currency_price(wallet.currency.code)
             data.append([
                 '{0} ({1})'.format(wallet.currency.name, wallet.currency.code),
+                utils.make_price_string(wallet.balance, wallet.currency.code, price),
                 utils.make_price_string(wallet.available, wallet.currency.code, price),
                 utils.make_price_string(wallet.pending, wallet.currency.code, price),
             ])
@@ -289,8 +290,9 @@ class WalletCommand(BaseCommand):
         wallet = core.exchange_handle.get_wallet(currency.code)
         make_price = lambda i: utils.make_price_string(i, currency.code, price)
         data = [
+            ['Total balance', make_price(wallet.balance)],
             ['Available balance', make_price(wallet.available)],
-            ['Pending balance', make_price(wallet.pending)]
+            ['Pending/locked balance', make_price(wallet.pending)]
         ]
         table = AsciiTable(data, '{0} wallet'.format(currency.name))
         table.inner_heading_row_border = False
