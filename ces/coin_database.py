@@ -89,21 +89,31 @@ class CoinDatabase:
                 # TODO: somehow log this
                 pass
             if result is not None:
+                extract_float = lambda i: None if i is None else float(i)
                 with self._metadata_condition:
                     for entry in result:
-                        self._metadata[entry['symbol']] = CoinMetadata(
-                            entry['name'],
-                            float(entry['price_' + self._price_suffix]),
-                            int(entry['rank']),
-                            float(entry['24h_volume_' + self._price_suffix]),
-                            float(entry['market_cap_' + self._price_suffix]),
-                            float(entry['available_supply']),
-                            float(entry['total_supply']),
-                            None if entry['max_supply'] is None else float(entry['max_supply']),
-                            float(entry['percent_change_1h']),
-                            float(entry['percent_change_24h']),
-                            float(entry['percent_change_7d'])
-                        )
+                        try:
+                            self._metadata[entry['symbol']] = CoinMetadata(
+                                entry['name'],
+                                extract_float(entry['price_' + self._price_suffix]),
+                                int(entry['rank']),
+                                extract_float(entry['24h_volume_' + self._price_suffix]),
+                                extract_float(entry['market_cap_' + self._price_suffix]),
+                                extract_float(entry['available_supply']),
+                                extract_float(entry['total_supply']),
+                                extract_float(entry['max_supply']),
+                                extract_float(entry['percent_change_1h']),
+                                extract_float(entry['percent_change_24h']),
+                                extract_float(entry['percent_change_7d'])
+                            )
+                        except Exception as ex:
+                            if 'symbol' in entry:
+                                print 'Failed to parse metadata for "{0}": {1}'.format(
+                                    entry['symbol'],
+                                    ex
+                                )
+                            else:
+                                print 'Failed to parse currency metadata: {0}'.format(ex)
                     self._metadata_condition.notify_all()
             with self._stop_condition:
                 # Sleep for 5 minutes
