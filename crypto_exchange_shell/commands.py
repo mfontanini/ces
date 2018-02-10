@@ -1089,21 +1089,23 @@ class CoinInfoCommand(BaseCommand):
 
     def execute(self, core, params):
         metadata = core.coin_db.get_currency_metadata(params['currency'])
-        ff = utils.format_float
+        fn = lambda value: '{0:,d}'.format(int(value)) if value >= 1000000 \
+                                                       else utils.format_float(value)
         data = [
             ['Name', metadata.name],
-            ['Price', '${0}'.format(ff(metadata.price))],
-            ['24h volume', '${0}'.format(ff(metadata.volume_24h))],
-            ['Market cap', '${0}'.format(ff(metadata.market_cap))],
-            ['Available supply', '{0} {1}'.format(ff(metadata.available_supply), params['currency'])],
-            ['Total supply', '{0} {1}'.format(ff(metadata.total_supply), params['currency'])],
+            ['Price', '${0}'.format(fn(metadata.price))],
+            ['Rank', metadata.rank],
+            ['24h volume', '${0}'.format(fn(metadata.volume_24h))],
+            ['Market cap', '${0}'.format(fn(metadata.market_cap))],
+            ['Available supply', '{0} {1}'.format(fn(metadata.available_supply), params['currency'])],
+            ['Total supply', '{0} {1}'.format(fn(metadata.total_supply), params['currency'])],
         ]
         if metadata.max_supply is not None:
-            data.append(['Max supply', '{0} {1}'.format(ff(metadata.max_supply), params['currency'])])
+            data.append(['Max supply', '{0} {1}'.format(fn(metadata.max_supply), params['currency'])])
         data += [
-            ['Change 1h', '{0}%'.format(ff(metadata.change_1h))],
-            ['Change 24h', '{0}%'.format(ff(metadata.change_24h))],
-            ['Change 7d', '{0}%'.format(ff(metadata.change_7d))],
+            ['Change 1h', '{0}%'.format(fn(metadata.change_1h))],
+            ['Change 24h', '{0}%'.format(fn(metadata.change_24h))],
+            ['Change 7d', '{0}%'.format(fn(metadata.change_7d))],
         ]
         table = AsciiTable(data, '{0} information'.format(params['currency']))
         table.inner_heading_row_border = False
