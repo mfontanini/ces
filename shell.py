@@ -30,6 +30,7 @@
 import signal
 import traceback
 import argparse
+import sys
 from ces.exchanges.bittrex_wrapper import BittrexWrapper
 from ces.exchanges.binance_wrapper import BinanceWrapper
 from ces.commands import CommandManager
@@ -74,7 +75,6 @@ except Exception as ex:
     print 'Error parsing config: {0}'.format(ex)
     exit(1)
 
-print 'Fetching data from exchange...'
 try:
     valid_exchanges = ['bittrex', 'binance']
     for name in config_manager.exchanges:
@@ -90,6 +90,8 @@ try:
     exchange_name = args.exchange or config_manager.exchanges.keys()[0]
     api_key = config_manager.exchanges[exchange_name].api_key
     api_secret = config_manager.exchanges[exchange_name].api_secret
+    sys.stdout.write('\rFetching data from {0} exchange...'.format(exchange_name))
+    sys.stdout.flush()
     if exchange_name == 'bittrex':
         handle = BittrexWrapper(api_key, api_secret)
     elif exchange_name == 'binance':
@@ -108,8 +110,10 @@ except Exception as ex:
     exit(1)
 
 coin_db = CoinDatabase()
-print 'Fetching latest crypto currency metadata...'
+sys.stdout.write('\rFetching latest crypto currency metadata...')
+sys.stdout.flush()
 coin_db.wait_for_data()
+print '\r*** Crytocurrency Exchange Shell. Type "help" to get started. ***'
 
 running = True
 output_manager = OutputManager()
