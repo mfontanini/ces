@@ -30,7 +30,7 @@ import sys
 import re
 from terminaltables import AsciiTable
 from exceptions import *
-from models import CandleTicks
+from models import CandleTicks, Candle
 from simpleeval import simple_eval
 from exchanges.base_exchange_wrapper import OrderInvalidity
 from parameter_parser import *
@@ -927,9 +927,75 @@ BTC/XLM market:
 {0} BTC XLM one_hour'''
     }
     SAMPLE_COUNT = 50
+    HEIGHT = 24
 
     def __init__(self):
         BaseCommand.__init__(self, 'candles')
+
+    @classmethod
+    def find_lowest_highest(cls, candles):
+        lowest = None
+        highest = None
+        for i in candles:
+            if lowest is None or i.lowest_price < lowest:
+                lowest = i.lowest_price
+            if highest is None or i.highest_price > highest:
+                highest = i.highest_price
+        return (lowest, highest)
+
+    @classmethod
+    def display_candles(cls, candles, matrix, lowest, highest, interval):
+        y_values = map(
+            lambda i: lowest + (i / float(CandlesCommand.HEIGHT)) * (highest - lowest),
+            range(CandlesCommand.HEIGHT)
+        )
+        y_values.reverse()
+        y_fmt_string = utils.make_appropriate_float_format_string(max(y_values))
+        top_y_length = len(y_fmt_string.format(y_values[0]))
+
+        for i in range(CandlesCommand.HEIGHT):
+            y_label = y_fmt_string.format(y_values[i])
+            # Append enough spaces to padd the length difference with the top label 
+            sys.stdout.write('{0}{1} | '.format(y_label, (top_y_length - len(y_label)) * ' '))
+            for column in matrix:
+                sys.stdout.write(column[i] + " ")
+            sys.stdout.write('\n')
+        print u'\u2015' * (len(candles) * 2 + len(y_fmt_string.format(0.0)))
+        label_length = 5
+        x_labels = []
+        for i in range(len(candles) - 1, 0, -4):
+            x_labels.append(utils.make_candle_label(candles[i].timestamp, interval))
+        x_labels.reverse()
+        print ' ' * top_y_length + '   ' + '   '.join(x_labels)
+
+    @classmethod
+    def build_matrix(cls, candles, lowest, highest):
+        matrix = []
+        normalize = lambda v: (v - lowest) / (highest - lowest)
+        for i in candles:
+            open_value = normalize(i.open_price)
+            close_value = normalize(i.close_price)
+            low_value = normalize(i.lowest_price)
+            high_value = normalize(i.highest_price)
+            top = max(open_value, close_value)
+            bottom = min(open_value, close_value)
+            column = []
+            total_written = 0
+            for i in range(CandlesCommand.HEIGHT):
+                value = i / float(CandlesCommand.HEIGHT)
+                if value >= bottom and value <= top:
+                    column.append(u'\u028C' if close_value > open_value else 'v')
+                    total_written += 1
+                elif value > low_value and value < high_value:
+                    column.append(u'\u00A6')
+                    total_written += 1
+                else:
+                    column.append(' ')
+            if total_written == 0:
+                column[int(high_value * (CandlesCommand.HEIGHT - 1))] = u'\u00A6'
+            column.reverse()
+            matrix.append(column)
+        return matrix
 
     def execute(self, core, params):
         base_currency_code = params['base-currency']
@@ -946,59 +1012,89 @@ BTC/XLM market:
             CandlesCommand.SAMPLE_COUNT
         )
         candles = candles[-CandlesCommand.SAMPLE_COUNT:]
-        lowest = None
-        highest = None
-        for i in candles:
-            if lowest is None or i.lowest_price < lowest:
-                lowest = i.lowest_price
-            if highest is None or i.highest_price > highest:
-                highest = i.highest_price
-        height = 24
-        matrix = []
-        normalize = lambda v: (v - lowest) / (highest - lowest)
-        for i in candles:
-            open_value = normalize(i.open_price)
-            close_value = normalize(i.close_price)
-            low_value = normalize(i.lowest_price)
-            high_value = normalize(i.highest_price)
-            top = max(open_value, close_value)
-            bottom = min(open_value, close_value)
-            column = []
-            total_written = 0
-            for i in range(height):
-                value = i / float(height)
-                if value >= bottom and value <= top:
-                    column.append(u'\u028C' if close_value > open_value else 'v')
-                    total_written += 1
-                elif value > low_value and value < high_value:
-                    column.append(u'\u00A6')
-                    total_written += 1
-                else:
-                    column.append(' ')
-            if total_written == 0:
-                column[int(high_value * (height - 1))] = u'\u00A6'
-            column.reverse()
-            matrix.append(column)
+        lowest, highest = self.find_lowest_highest(candles)
+        matrix = self.build_matrix(candles, lowest, highest)
+        self.display_candles(candles, matrix, lowest, highest, interval)
 
-        y_values = map(lambda i: lowest + (i / float(height)) * (highest - lowest), range(height))
-        y_values.reverse()
-        y_fmt_string = utils.make_appropriate_float_format_string(max(y_values))
-        top_y_length = len(y_fmt_string.format(y_values[0]))
+class CompoundCandlesCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([
+        PositionalParameter('base-currency', parameter_type=str),
+        PositionalParameter('source-currency', parameter_type=str),
+        PositionalParameter('target-currency', parameter_type=str),
+        ParameterChoice([
+            ConstParameter('interval', keyword=i, required=False) for i in CandleTicks.__members__.keys()
+        ])
+    ])
+    HELP_TEMPLATE = {
+        'usage' : '{0} <base-currency> <source-currency> <target-currency> [interval]',
+        'short_description' : 'compute the candles for two non tradeable currencies',
+        'long_description' : '''Fetches the candles for <base-currency>/<source-currency> and
+<base-currency>/<target-currency> and correlates their values. This
+allows you to get candles for two currencies you can't directly trade.
+For example, if there's a BTC/DOGE and a BTC/XLM market but not a
+DOGE/XLM one, you can use this command to compute what the
+historic price for DOGE/XLM would be.
 
-        for i in range(height):
-            y_label = y_fmt_string.format(y_values[i])
-            # Append enough spaces to padd the length difference with the top label 
-            sys.stdout.write('{0}{1} | '.format(y_label, (top_y_length - len(y_label)) * ' '))
-            for column in matrix:
-                sys.stdout.write(column[i] + " ")
-            sys.stdout.write('\n')
-        print u'\u2015' * (len(candles) * 2 + len(y_fmt_string.format(0.0)))
-        label_length = 5
-        x_labels = []
-        for i in range(len(candles) - 1, 0, -4):
-            x_labels.append(utils.make_candle_label(candles[i].timestamp, interval))
-        x_labels.reverse()
-        print ' ' * top_y_length + '   ' + '   '.join(x_labels)
+The <interval> parameter must be one of one_minute, five_minutes,
+thirty_minutes, one_hour and one_day.''',
+        'examples' : '''Print the candles for a XRP/XLM market using ETH as the
+intermediate currency to use:
+
+{0} ETH XLM XRP'''
+    }
+    SAMPLE_COUNT = 50
+    HEIGHT = 24
+
+    def __init__(self):
+        BaseCommand.__init__(self, 'compound_candles')
+
+    def execute(self, core, params):
+        base_currency_code = params['base-currency']
+        source_currency_code = params['source-currency']
+        target_currency_code = params['target-currency']
+        interval_string = params.get('interval', None)
+        if interval_string is None:
+            interval = CandleTicks.thirty_minutes
+        else:
+            interval = CandleTicks[interval_string]
+        candles_source = core.exchange_handle.get_candles(
+            base_currency_code,
+            source_currency_code,
+            interval,
+            CandlesCommand.SAMPLE_COUNT
+        )
+        candles_target = core.exchange_handle.get_candles(
+            base_currency_code,
+            target_currency_code,
+            interval,
+            CandlesCommand.SAMPLE_COUNT
+        )
+        candles_source = candles_source[-CandlesCommand.SAMPLE_COUNT:]
+        candles_target = candles_target[-CandlesCommand.SAMPLE_COUNT:]
+
+        candles = []
+        for i in range(len(candles_source)):
+            source = candles_source[i]
+            target = candles_target[i]
+            candles.append(Candle(
+                source.lowest_price / target.lowest_price,
+                source.highest_price / target.highest_price,
+                source.open_price / target.open_price,
+                source.close_price / target.close_price,
+                source.timestamp
+            ))
+
+        lowest, highest = CandlesCommand.find_lowest_highest(candles)
+        matrix = CandlesCommand.build_matrix(candles, lowest, highest)
+        CandlesCommand.display_candles(candles, matrix, lowest, highest, interval)
+
+    def generate_options(self, core, parameter_name, existing_parameters):
+        if parameter_name in ['source-currency', 'target-currency']:
+            return map(
+                lambda i: i.code,
+                core.exchange_handle.get_markets(existing_parameters['base-currency'])
+            )
+        return []
 
 class AddressBookCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
@@ -1128,6 +1224,7 @@ class CommandManager:
         self.add_command(WithdrawCommand())
         self.add_command(DepositAddressCommand())
         self.add_command(CandlesCommand())
+        self.add_command(CompoundCandlesCommand())
         self.add_command(AddressBookCommand())
         self.add_command(CoinInfoCommand())
         self.add_command(UsageCommand())
