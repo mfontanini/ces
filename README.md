@@ -36,6 +36,10 @@ There's several commands available that allow you to either inspect coin/price r
 
 ![](https://i.imgur.com/VNkIkbj.png)
 
+If you want to see how each command is used, you can use the `usage` command:
+
+![](https://i.imgur.com/OBQZskM.png)
+
 ## Which exchanges are supported?
 
 Currently only [Bittrex](https://bittrex.com/) and [Binance](https://www.binance.com/) are supported but more can be easily added.
