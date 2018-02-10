@@ -1,6 +1,6 @@
 import unittest
-from crypto_exchange_shell.parameter_parser import *
-from crypto_exchange_shell.exceptions import *
+from ces.parameter_parser import *
+from ces.exceptions import *
 
 class OptionVisitor:
     def __init__(self):

@@ -28,7 +28,7 @@
 # either expressed or implied, of the FreeBSD Project.
 
 import argparse
-from crypto_exchange_shell.utils import encrypt, decrypt_file, ask_for_passphrase
+from ces.utils import encrypt, decrypt_file, ask_for_passphrase
 
 parser = argparse.ArgumentParser(description='Encrypt/decrypt config file')
 parser.add_argument('-p', '--path', type=str, required=True, help='path to encrypt/decrypt')

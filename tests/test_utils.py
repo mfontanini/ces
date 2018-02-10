@@ -1,5 +1,5 @@
 import unittest
-import crypto_exchange_shell.utils as utils
+import ces.utils as utils
 
 class TestUtils(unittest.TestCase):
     def test_rounding_by_whole_numbers(self):

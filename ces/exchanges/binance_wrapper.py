@@ -31,10 +31,10 @@ import dateparser
 from time import mktime
 from datetime import datetime
 from binance.client import Client
-from crypto_exchange_shell.models import *
-from crypto_exchange_shell.exceptions import *
-from crypto_exchange_shell.exchanges.base_exchange_wrapper import *
-import crypto_exchange_shell.utils as utils
+from ces.models import *
+from ces.exceptions import *
+from ces.exchanges.base_exchange_wrapper import *
+import ces.utils as utils
 
 class OrderFilter:
     def __init__(self, min_price, max_price, price_tick, min_amount, max_amount,

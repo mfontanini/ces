@@ -30,18 +30,18 @@
 import signal
 import traceback
 import argparse
-from crypto_exchange_shell.exchanges.bittrex_wrapper import BittrexWrapper
-from crypto_exchange_shell.exchanges.binance_wrapper import BinanceWrapper
-from crypto_exchange_shell.commands import CommandManager
-from crypto_exchange_shell.shell_completer import ShellCompleter
-from crypto_exchange_shell.core import Core
-from crypto_exchange_shell.coin_database import CoinDatabase
-from crypto_exchange_shell.config_manager import ConfigManager
-from crypto_exchange_shell.output_manager import OutputManager
-from crypto_exchange_shell.exceptions import *
-from crypto_exchange_shell.storage import Storage
-from crypto_exchange_shell.address_book import AddressBook
-from crypto_exchange_shell.utils import ask_for_passphrase
+from ces.exchanges.bittrex_wrapper import BittrexWrapper
+from ces.exchanges.binance_wrapper import BinanceWrapper
+from ces.commands import CommandManager
+from ces.shell_completer import ShellCompleter
+from ces.core import Core
+from ces.coin_database import CoinDatabase
+from ces.config_manager import ConfigManager
+from ces.output_manager import OutputManager
+from ces.exceptions import *
+from ces.storage import Storage
+from ces.address_book import AddressBook
+from ces.utils import ask_for_passphrase
 
 parser = argparse.ArgumentParser(description='Crypto exchange shell')
 parser.add_argument('-c', '--config', type=str, required=True,

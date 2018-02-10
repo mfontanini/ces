@@ -26,10 +26,10 @@
 # either expressed or implied, of the FreeBSD Project.
 
 from bittrex.bittrex import *
-from crypto_exchange_shell.models import *
-from crypto_exchange_shell.exceptions import *
-from crypto_exchange_shell.exchanges.base_exchange_wrapper import BaseExchangeWrapper
-import crypto_exchange_shell.utils as utils
+from ces.models import *
+from ces.exceptions import *
+from ces.exchanges.base_exchange_wrapper import BaseExchangeWrapper
+import ces.utils as utils
 
 class BittrexWrapper(BaseExchangeWrapper):
     ORDER_TYPE_MAPPINGS = {
