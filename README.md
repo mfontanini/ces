@@ -1,4 +1,4 @@
-Cryptocurrency Exchange Ehell
+Cryptocurrency Exchange Shell
 =============================
 
 ## What is this?
