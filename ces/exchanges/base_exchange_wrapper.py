@@ -77,6 +77,9 @@ class BaseExchangeWrapper:
     def is_order_notional_value_valid(self, base_currency_code, market_currency_code, rate, amount):
         return True
 
+    def minimum_withdraw_limit(self, currency_code):
+        return None
+
     def adjust_order_rate(self, base_currency_code, market_currency_code, rate):
         return rate
 

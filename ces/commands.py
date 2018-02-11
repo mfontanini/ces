@@ -796,14 +796,24 @@ Another example, 1 BTC:
                         currency.withdraw_fee
                     )
                 )
+        minimum_withdraw = core.exchange_handle.minimum_withdraw_limit(currency_code)
+        if minimum_withdraw and amount < minimum_withdraw:
+            raise CommandExecutionException('Minimum withdraw is {0} {1}'.format(
+                minimum_withdraw,
+                currency_code
+            ))
         data = [
             ['Currency', 'Amount', 'Tx fee', 'Address']
         ]
         price = core.coin_db.get_currency_price(currency.code)
+        if currency.withdraw_fee is not None:
+            fee_string = utils.make_price_string(currency.withdraw_fee, currency.code, price)
+        else:
+            fee_string = '<unknown>'
         data.append([
             currency.code,
             utils.make_price_string(amount - currency.withdraw_fee, currency.code, price),
-            utils.make_price_string(currency.withdraw_fee, currency.code, price),
+            fee_string,
             address
         ])
         if address_tag is not None:

@@ -82,10 +82,26 @@ class BinanceWrapper(BaseExchangeWrapper):
             data = json.loads(result.text)
         except Exception as ex:
             print 'Failed to parse coinmarketcap data: {0}'.format(ex)
+            return {}
         names = {}
         for item in data:
             names[item['symbol']] = item['name']
         return names
+
+    def _load_withdraw_info(self):
+        try:
+            result = requests.get('https://www.binance.com/assetWithdraw/getAllAsset.html')
+            data = json.loads(result.text)
+        except Exception as ex:
+            print 'Failed to parse withdraw fees data: {0}'.format(ex)
+            return {}
+        fees = {}
+        for item in data:
+            fees[item['assetCode']] = {
+                'fee' : item['transactionFee'],
+                'min' : float(item['minProductWithdraw'])
+            }
+        return fees
 
     def _make_exchange_name(self, base_currency_code, market_currency_code):
         if base_currency_code not in self._markets or \
@@ -131,16 +147,23 @@ class BinanceWrapper(BaseExchangeWrapper):
 
     def _load_markets(self):
         names = self._load_names()
+        self.withdraw_info = self._load_withdraw_info()
         result = self._perform_request(lambda: self._handle.get_exchange_info())
         for symbol in result['symbols']:
             base_currency = symbol['quoteAsset']
             market_currency = symbol['baseAsset']
-            self.add_currency(
-                Currency(base_currency, names.get(base_currency, base_currency), 0, 0)
-            )
-            self.add_currency(
-                Currency(market_currency, names.get(market_currency, market_currency), 0, 0)
-            )
+            self.add_currency(Currency(
+                base_currency,
+                names.get(base_currency, base_currency),
+                0,
+                self.withdraw_info.get(base_currency, {}).get('fee', None)
+            ))
+            self.add_currency(Currency(
+                market_currency,
+                names.get(market_currency, market_currency),
+                0,
+                self.withdraw_info.get(market_currency, {}).get('fee', None)
+            ))
             self.add_market(base_currency, market_currency)
             self._add_filter(symbol['symbol'], symbol['filters'])
 
@@ -375,6 +398,11 @@ class BinanceWrapper(BaseExchangeWrapper):
             return OrderInvalidity(OrderInvalidity.Comparison.greater_eq, order_filter.min_notional)
         else:
             return True
+
+    def minimum_withdraw_limit(self, currency_code):
+        if currency_code in self.withdraw_info:
+            return self.withdraw_info[currency_code]['min']
+        return None
 
     def adjust_order_rate(self, base_currency_code, market_currency_code, rate):
         exchange_name = self._make_exchange_name(base_currency_code, market_currency_code)
