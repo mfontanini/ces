@@ -1,7 +1,7 @@
 python_binance==0.6.2
 simpleeval==0.9.5
 terminaltables==3.1.0
-requests==2.7.0
+requests==2.18.4
 dateparser==0.6.0
 python_bittrex==0.2.2
 pycrypto==2.6.1
