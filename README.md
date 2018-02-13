@@ -7,7 +7,7 @@ CES is a command line interface to buy, sell and get information about crypto cu
 
 The shell-like interface makes it easy to place orders, jump between different markets, see historic prices, etc. This uses [GNU readline](https://tiswww.case.edu/php/chet/readline/rltop.html) under the hood to provide parameter autocompletion and command history so performing any actions is quick and easy.
 
-[![asciicast](https://asciinema.org/a/FwdzqoQquyzkGYb57OycF59cl.png)](https://asciinema.org/a/FwdzqoQquyzkGYb57OycF59cl)
+[![asciicast](https://asciinema.org/a/H9SVTOvNJ048QpREXRA6uEv1s.png)](https://asciinema.org/a/H9SVTOvNJ048QpREXRA6uEv1s)
 
 ## Why would I use this?
 
