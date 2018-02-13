@@ -58,11 +58,21 @@ If you're concerned about your funds being lost in badly interpreted/typed trans
 
 ## Getting started
 
-In order to get started, simply create a configuration file. If you clone the repo, keep in mind the `configs` directory is inside `.gitignore` so it's safe to place these files in there as they will never be committed into your repo.
+### Installing dependencies
+
+Installing the needed dependencies is simple. Just download the latest release (or clone the repo) and run:
+
+```bash
+pip install -r requirements.txt
+```
+
+This will install all the python dependencies you need via `pip` and you'll be ready to go.
 
 ### Configuration file
 
-The configuration file has to be in [yaml](http://yaml.org/) format. A basic configuration file to use Bittrex would look like:
+The configuration file has to be in [yaml](http://yaml.org/) format. In case you clone the repo, keep in mind the `configs` directory is inside `.gitignore` so it's safe to place files in there as they will never be committed into your repo.
+
+A basic configuration file to use Bittrex would look like:
 
 ```yaml
 
