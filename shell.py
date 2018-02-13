@@ -113,7 +113,7 @@ coin_db = CoinDatabase()
 sys.stdout.write('\rFetching latest crypto currency metadata...')
 sys.stdout.flush()
 coin_db.wait_for_data()
-print '\r*** Crytocurrency Exchange Shell. Type "help" to get started. ***'
+print '\r*** Cryptocurrency Exchange Shell. Type "help" to get started. ***'
 
 running = True
 output_manager = OutputManager()
