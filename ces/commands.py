@@ -414,7 +414,8 @@ currency pair for completed orders.''',
         order_type = params['order-type']
         if order_type == 'open':
             data = [['Id', 'Exchange', 'Date', 'Type', 'Bid/Ask', 'Amount (filled/total)']]
-            for order in core.exchange_handle.get_open_orders():
+            sort = lambda orders: sorted(orders, key=lambda i: i.date_open)
+            for order in sort(core.exchange_handle.get_open_orders()):
                 data.append([
                     order.order_id,
                     '{0}/{1}'.format(order.base_currency.code, order.market_currency.code),
@@ -434,7 +435,8 @@ currency pair for completed orders.''',
                 params.get('base-currency'),
                 params.get('market-currency'),
             )
-            for order in orders:
+            sort = lambda orders: sorted(orders, key=lambda i: i.date_closed)
+            for order in sort(orders):
                 data.append([
                     '{0}/{1}'.format(order.base_currency.code, order.market_currency.code),
                     self.format_date(order.date_closed),
