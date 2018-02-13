@@ -43,7 +43,7 @@ class BittrexWrapper(BaseExchangeWrapper):
         CandleTicks.one_hour : 'hour',
         CandleTicks.one_day : 'day',
     }
-    CURRENCIES_WITH_ADDRESS_TAG = set(['XLM', 'XMR', 'NXT'])
+    CURRENCIES_WITH_ADDRESS_TAG = set(['XLM', 'XMR', 'NXT', 'XRP'])
 
     def __init__(self, api_key, api_secret):
         BaseExchangeWrapper.__init__(self)

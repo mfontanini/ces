@@ -765,6 +765,7 @@ Another example, 1 BTC:
         'XLM' : 'Memo text',
         'XMR' : 'Payment id',
         'NXT' : 'Message',
+        'XRP' : 'Tag',
     }
 
     def __init__(self):
