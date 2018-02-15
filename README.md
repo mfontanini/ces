@@ -77,7 +77,7 @@ A basic configuration file to use Bittrex would look like:
 ```yaml
 
 exchanges:
-    * name: bittrex
+    - name: bittrex
       api_key: 91220aacb69bc6401b1e04e290e022cd
       api_secret: 9c9e97f59eed930120633191a29bee5f
 database:
