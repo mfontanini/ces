@@ -975,7 +975,7 @@ BTC/XLM market:
             for column in matrix:
                 sys.stdout.write(column[i] + " ")
             sys.stdout.write('\n')
-        print u'\u2015' * (len(candles) * 2 + len(y_fmt_string.format(0.0)))
+        print u'\u2015' * (len(candles) * 2 + top_y_length + 2)
         label_length = 5
         x_labels = []
         for i in range(len(candles) - 1, 0, -4):
