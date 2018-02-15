@@ -77,11 +77,11 @@ A basic configuration file to use Bittrex would look like:
 ```yaml
 
 exchanges:
-    - name: bittrex
-      api_key: 91220aacb69bc6401b1e04e290e022cd
-      api_secret: 9c9e97f59eed930120633191a29bee5f
+  - name: bittrex
+    api_key: 91220aacb69bc6401b1e04e290e022cd
+    api_secret: 9c9e97f59eed930120633191a29bee5f
 database:
-    path: 'configs/config.db'
+  path: 'configs/config.db'
 ```
 
 If you don't want to put your API keys in yet, you can simply set both fields to _null_. This will allow you to perform publicly accessible read operations like seeing order books, prices, etc.
