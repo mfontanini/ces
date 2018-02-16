@@ -1090,8 +1090,9 @@ intermediate currency to use:
             interval,
             CandlesCommand.SAMPLE_COUNT
         )
-        candles_source = candles_source[-CandlesCommand.SAMPLE_COUNT:]
-        candles_target = candles_target[-CandlesCommand.SAMPLE_COUNT:]
+        samples = min(CandlesCommand.SAMPLE_COUNT, len(candles_source), len(candles_target))
+        candles_source = candles_source[-samples:]
+        candles_target = candles_target[-samples:]
 
         candles = []
         for i in range(len(candles_source)):
