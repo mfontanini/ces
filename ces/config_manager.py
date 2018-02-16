@@ -57,6 +57,7 @@ class ConfigManager:
                 exchange['api_key'],
                 exchange['api_secret']
             )
+        self.history_path = config.get('history', {}).get('path', None)
         self.exchanges = exchanges
         self.database_path = config['database']['path']
 

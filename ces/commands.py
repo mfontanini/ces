@@ -35,6 +35,12 @@ from simpleeval import simple_eval
 from exchanges.base_exchange_wrapper import OrderInvalidity
 from parameter_parser import *
 
+try:
+    import readline
+except ImportError: #Window systems don't have GNU readline
+    import pyreadline.windows_readline as readline
+    readline.rl.mode.show_all_if_ambiguous = "on"
+
 class BaseCommand:
     def __init__(self, name):
         self.name = name
@@ -1222,6 +1228,43 @@ class CoinInfoCommand(BaseCommand):
         table.inner_heading_row_border = False
         print table.table
 
+class CommandHistoryCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([
+        ParameterChoice([
+            ConstParameter('action', keyword='clear'),
+            ConstParameter('action', keyword='show')
+        ])
+    ])
+
+    HELP_TEMPLATE = {
+        'usage' : '{0} <clear|show>',
+        'short_description' : 'manage command history',
+        'long_description' : 'Manage the command history.',
+        'examples' : '''Show the current command history:
+
+history show
+
+Clear the command history
+
+history clear'''
+    }
+
+    def __init__(self):
+        BaseCommand.__init__(self, 'history')
+
+    def execute(self, core, params):
+        count = readline.get_current_history_length()
+        if params['action'] == 'clear':
+            for i in range(count):
+                readline.remove_history_item(0)
+            print 'Removed {0} commands from history'.format(count)
+        elif params['action'] == 'show':
+            if count == 0:
+                print 'No commands in history'
+            else:
+                for i in range(1, count + 1):
+                    print readline.get_history_item(i)
+
 class CommandManager:
     def __init__(self):
         self._commands = {}
@@ -1242,6 +1285,7 @@ class CommandManager:
         self.add_command(CompoundCandlesCommand())
         self.add_command(AddressBookCommand())
         self.add_command(CoinInfoCommand())
+        self.add_command(CommandHistoryCommand())
         self.add_command(UsageCommand())
         self.add_command(HelpCommand())
 

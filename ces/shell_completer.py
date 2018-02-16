@@ -39,6 +39,17 @@ class ShellCompleter:
         readline.set_completer(self.generate_suggestions)
         readline.set_completer_delims(' \t\n`~!@#$%^&*()=+[{]}\\|;:\'",<>/?')
 
+    def load_history(self, history_path):
+        try:
+            readline.read_history_file(history_path)
+        except IOError:
+            return
+        except Exception as ex:
+            print 'Failed to load command history: {0}'.format(ex)
+
+    def save_history(self, history_path):
+        readline.write_history_file(history_path)
+
     def generate_suggestions(self, text, state):
         if self._last_state is not None:
             if self._last_state['text'] == text and \

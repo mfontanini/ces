@@ -120,6 +120,8 @@ output_manager = OutputManager()
 cmd_manager = CommandManager()
 core = Core(handle, cmd_manager, output_manager, address_book, coin_db)
 completer = ShellCompleter(core)
+if config_manager.history_path:
+    completer.load_history(config_manager.history_path)
 while running:
     try:
         line = raw_input('#> ')
@@ -191,4 +193,6 @@ while running:
     except Exception as ex:
         print 'Error: {0}'.format(ex)
         traceback.print_exc()
+if config_manager.history_path:
+    completer.save_history(config_manager.history_path)
 coin_db.stop()
