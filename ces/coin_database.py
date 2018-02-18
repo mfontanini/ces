@@ -46,15 +46,22 @@ class CoinMetadata:
         self.change_7d = change_7d
 
 class CoinDatabase:
-    CMC_URL = 'https://api.coinmarketcap.com/v1/ticker/'
+    CMC_URL = 'https://api.coinmarketcap.com/v1/ticker/?convert={0}'
+    VALID_FIAT_CURRENCIES = set([
+        'aud', 'brl', 'cad', 'chf', 'clp', 'cny', 'czk', 'dkk', 'eur', 'gbp', 'hkd', 'huf', 'idr',
+        'ils', 'inr', 'jpy', 'krw', 'mxn', 'myr', 'nok', 'nzd', 'php', 'pkr', 'pln', 'rub', 'sek',
+        'sgd', 'thb', 'try', 'twd', 'zar', 'usd'
+    ])
 
-    def __init__(self, convert=None):
-        self._convert = convert
+    def __init__(self, fiat_currency):
+        self.fiat_currency = fiat_currency.lower()
+        if self.fiat_currency not in CoinDatabase.VALID_FIAT_CURRENCIES:
+            raise ConfigException('Unknown fiat currency "{0}"'.format(fiat_currency))
         self._running = True
-        self._price_suffix = 'usd'
         self._metadata = {}
         self._metadata_condition = threading.Condition()
         self._stop_condition = threading.Condition()
+        self._url = CoinDatabase.CMC_URL.format(self.fiat_currency.upper())
         self._update_thread = threading.Thread(target=self.poll_data)
         self._update_thread.start()
 
@@ -83,7 +90,7 @@ class CoinDatabase:
         while self._running:
             result = None
             try:
-                raw_result = requests.get(CoinDatabase.CMC_URL)
+                raw_result = requests.get(self._url)
                 result = json.loads(raw_result.text)
             except Exception as ex:
                 # TODO: somehow log this
@@ -95,10 +102,10 @@ class CoinDatabase:
                         try:
                             self._metadata[entry['symbol']] = CoinMetadata(
                                 entry['name'],
-                                extract_float(entry['price_' + self._price_suffix]),
+                                extract_float(entry['price_' + self.fiat_currency]),
                                 int(entry['rank']),
-                                extract_float(entry['24h_volume_' + self._price_suffix]),
-                                extract_float(entry['market_cap_' + self._price_suffix]),
+                                extract_float(entry['24h_volume_' + self.fiat_currency]),
+                                extract_float(entry['market_cap_' + self.fiat_currency]),
                                 extract_float(entry['available_supply']),
                                 extract_float(entry['total_supply']),
                                 extract_float(entry['max_supply']),

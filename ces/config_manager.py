@@ -57,6 +57,10 @@ class ConfigManager:
                 exchange['api_key'],
                 exchange['api_secret']
             )
+        self.fiat_currency = None
+        for key, value in config.get('metadata', {}).items():
+            if key == 'fiat_currency':
+                self.fiat_currency = value
         self.history_path = config.get('history', {}).get('path', None)
         self.exchanges = exchanges
         self.database_path = config['database']['path']

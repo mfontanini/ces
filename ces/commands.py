@@ -185,7 +185,12 @@ is operating. ''',
         market_currency_code = params['market-currency']
         price = core.coin_db.get_currency_price(base_currency_code)
         result = core.exchange_handle.get_market_state(base_currency_code, market_currency_code)
-        make_price = lambda i: utils.make_price_string(i, base_currency_code, price)
+        make_price = lambda i: utils.make_price_string(
+            i,
+            base_currency_code,
+            price,
+            core.coin_db.fiat_currency
+        )
         data = [
             ['Ask', make_price(result.ask)],
             ['Bid', make_price(result.bid)],
@@ -214,9 +219,9 @@ class OrderbookCommand(BaseCommand):
     def __init__(self):
         BaseCommand.__init__(self, 'orderbook')
 
-    def _make_columns(self, order, base_currency_code, market_currency_code, price):
+    def _make_columns(self, order, base_currency_code, market_currency_code, price, fiat_currency):
         return [
-            utils.make_price_string(order.rate, base_currency_code, price),
+            utils.make_price_string(order.rate, base_currency_code, price, fiat_currency),
             '{0:.2f} {1}'.format(order.quantity, market_currency_code)
         ]
 
@@ -232,14 +237,14 @@ class OrderbookCommand(BaseCommand):
         sell_rows = [['Rate', 'Quantity']]
         for i in range(OrderbookCommand.MAX_LINES):
             buy_rows.append(self._make_columns(buy_orderbook.orders[i], base_code, market_code,
-                                               price))
+                                               price, core.coin_db.fiat_currency))
             sell_rows.append(self._make_columns(sell_orderbook.orders[i], base_code, market_code,
-                                                price))
+                                                price, core.coin_db.fiat_currency))
 
         buy_table_rows = utils.make_table_rows('Bids', buy_rows)
         sell_table_rows = utils.make_table_rows('Asks', sell_rows)
         for i in range(len(buy_table_rows)):
-            print '{0} {1}'.format(buy_table_rows[i], sell_table_rows[i])
+            print u'{0} {1}'.format(buy_table_rows[i], sell_table_rows[i])
 
 class WalletsCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([])
@@ -262,9 +267,24 @@ class WalletsCommand(BaseCommand):
             price = core.coin_db.get_currency_price(wallet.currency.code)
             data.append([
                 '{0} ({1})'.format(wallet.currency.name, wallet.currency.code),
-                utils.make_price_string(wallet.balance, wallet.currency.code, price),
-                utils.make_price_string(wallet.available, wallet.currency.code, price),
-                utils.make_price_string(wallet.pending, wallet.currency.code, price),
+                utils.make_price_string(
+                    wallet.balance,
+                    wallet.currency.code,
+                    price,
+                    core.coin_db.fiat_currency
+                ),
+                utils.make_price_string(
+                    wallet.available,
+                    wallet.currency.code,
+                    price,
+                    core.coin_db.fiat_currency
+                ),
+                utils.make_price_string(
+                    wallet.pending,
+                    wallet.currency.code,
+                    price,
+                    core.coin_db.fiat_currency
+                )
             ])
         # If we only have the labels
         if len(data) == 1:
@@ -294,7 +314,12 @@ class WalletCommand(BaseCommand):
         currency = core.exchange_handle.get_currency(params['currency'])
         price = core.coin_db.get_currency_price(currency.code)
         wallet = core.exchange_handle.get_wallet(currency.code)
-        make_price = lambda i: utils.make_price_string(i, currency.code, price)
+        make_price = lambda i: utils.make_price_string(
+            i,
+            currency.code,
+            price,
+            core.coin_db.fiat_currency
+        )
         data = [
             ['Total balance', make_price(wallet.balance)],
             ['Available balance', make_price(wallet.available)],
@@ -622,8 +647,13 @@ Another example, selling all of our units of ETH at 1 BTC each:
         data.append([
             '{0}/{1}'.format(base_currency_code, market_currency_code),
             '{0} {1}'.format(amount, market_currency_code),
-            utils.make_price_string(rate, base_currency_code, price),
-            utils.make_price_string(rate * amount, base_currency_code, price),
+            utils.make_price_string(rate, base_currency_code, price, core.coin_db.fiat_currency),
+            utils.make_price_string(
+                rate * amount,
+                base_currency_code,
+                price,
+                core.coin_db.fiat_currency
+            )
         ])
         table = AsciiTable(data, 'Sell operation')
         print table.table
@@ -720,8 +750,13 @@ Another example, buying all of our units of ETH at 1 BTC each:
         data.append([
             '{0}/{1}'.format(base_currency_code, market_currency_code),
             '{0} {1}'.format(amount, market_currency_code),
-            utils.make_price_string(rate, base_currency_code, price),
-            utils.make_price_string(rate * amount, base_currency_code, price)
+            utils.make_price_string(rate, base_currency_code, price, core.coin_db.fiat_currency),
+            utils.make_price_string(
+                rate * amount,
+                base_currency_code,
+                price,
+                core.coin_db.fiat_currency
+            )
         ])
         table = AsciiTable(data, 'Buy operation')
         print table.table
@@ -816,12 +851,22 @@ Another example, 1 BTC:
         ]
         price = core.coin_db.get_currency_price(currency.code)
         if currency.withdraw_fee is not None:
-            fee_string = utils.make_price_string(currency.withdraw_fee, currency.code, price)
+            fee_string = utils.make_price_string(
+                currency.withdraw_fee,
+                currency.code,
+                price,
+                core.coin_db.fiat_currency
+            )
         else:
             fee_string = '<unknown>'
         data.append([
             currency.code,
-            utils.make_price_string(amount - currency.withdraw_fee, currency.code, price),
+            utils.make_price_string(
+                amount - currency.withdraw_fee,
+                currency.code,
+                price,
+                core.coin_db.fiat_currency
+            ),
             fee_string,
             address
         ])
@@ -1209,12 +1254,16 @@ class CoinInfoCommand(BaseCommand):
         metadata = core.coin_db.get_currency_metadata(params['currency'])
         fn = lambda value: '{0:,d}'.format(int(value)) if value >= 1000000 \
                                                        else utils.format_float(value)
+        fmt_currency = lambda value: utils.format_fiat_currency(
+            fn(value),
+            core.coin_db.fiat_currency
+        )
         data = [
             ['Name', metadata.name],
-            ['Price', '${0}'.format(fn(metadata.price))],
+            ['Price', fmt_currency(metadata.price)],
             ['Rank', metadata.rank],
-            ['24h volume', '${0}'.format(fn(metadata.volume_24h))],
-            ['Market cap', '${0}'.format(fn(metadata.market_cap))],
+            ['24h volume', fmt_currency(metadata.volume_24h)],
+            ['Market cap', fmt_currency(metadata.market_cap)],
             ['Available supply', '{0} {1}'.format(fn(metadata.available_supply), params['currency'])],
             ['Total supply', '{0} {1}'.format(fn(metadata.total_supply), params['currency'])],
         ]

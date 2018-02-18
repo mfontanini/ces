@@ -60,11 +60,51 @@ def format_float(number, number_format = '{0:.8f}'):
     # Format it, then remove right zeroes and remove dot if all decimals are gone
     return number_format.format(number).rstrip('0').rstrip('.')
 
-def make_price_string(base_currency_price, base_currency_code, currency_price):
-    return '{0} {1} (${2})'.format(
+def format_fiat_currency(value, fiat_currency):
+    fiat_currency_symbols = {
+        'aud' : 'AU$ {0}',
+        'brl' : 'R$ {0}',
+        'cad' : 'C$ {0}',
+        'chf' : '{0} CHF',
+        'clp' : 'CLP$ {0}',
+        'cny' : u'\u00a5{0}',
+        'czk' : u'K\u010d{0}',
+        'dkk' : '{0} kr',
+        'eur' : u'\u20AC{0}',
+        'gbp' : u'\u00a3{0}',
+        'hkd' : 'HK$ {0}',
+        'huf' : '{0} Ft',
+        'idr' : '{0} Rp',
+        'ils' : u'\u20aa{0}',
+        'inr' : u'\u20b9{0}',
+        'jpy' : u'\u00a5{0}',
+        'krw' : u'\u20a9{0}',
+        'mxn' : 'Mex$ {0}',
+        'myr' : '{0} MYR',
+        'nok' : '{0} kr',
+        'nzd' : 'NZ$ {0}',
+        'php' : u'\u20b1{0}',
+        'pkr' : u'\u20a8{0}',
+        'pln' : u'z\u0142{0}',
+        'rub' : u'\u20bd{0}',
+        'sek' : '{0} kr',
+        'sgd' : 'S${0}',
+        'thb' : u'\u0e3f{0}',
+        'try' : u'\u20ba{0}',
+        'twd' : 'NT${0}',
+        'zar' : '{0} R',
+        'usd' : '${0}',
+    }
+    if fiat_currency in fiat_currency_symbols:
+        return fiat_currency_symbols[fiat_currency].format(value)
+    return '{0} {1}'.format(value, fiat_currency)
+
+def make_price_string(base_currency_price, base_currency_code, currency_price, fiat_currency):
+    fiat_value = format_float(currency_price * base_currency_price, '{0:.4f}')
+    return u'{0} {1} ({2})'.format(
         format_float(base_currency_price, '{0:.8f}'),
         base_currency_code,
-        format_float(currency_price * base_currency_price, '{0:.4f}')
+        format_fiat_currency(fiat_value, fiat_currency),
     )
 
 def make_table_rows(title, table_data):

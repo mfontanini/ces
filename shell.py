@@ -109,7 +109,7 @@ except Exception as ex:
     print 'Failed to initialize storage: {0}'.format(ex)
     exit(1)
 
-coin_db = CoinDatabase()
+coin_db = CoinDatabase(config_manager.fiat_currency or 'usd')
 sys.stdout.write('\rFetching latest crypto currency metadata...')
 sys.stdout.flush()
 coin_db.wait_for_data()
