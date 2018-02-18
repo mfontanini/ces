@@ -90,6 +90,15 @@ The database path will be used to create a _sqlite3_ file to store some data. Cu
 
 Note that you can set multiple exchange's keys, using different exchange names for them (e.g. "bittrex" and "binance"). If you specify multiple of them in your configuration file, you'll need to provide the one you want to use by using the `-e` parameter when running the shell.
 
+#### Fiat currency support
+
+_CES_ will periodically poll [Coin Market Cap](https://coinmarketcap.com/) to pull coin prices. By default all prices will be shown in _USD_ but if you want to use some other fiat currency [supported by _CMC_](https://coinmarketcap.com/api/), then you can add an entry in your config file that looks like:
+
+```yaml
+metadata:
+  fiat_currency: eur
+```
+
 #### Encrypting the configuration file
 
 Given that the configuration file will contain your API keys, you may not want it to be stored in plain text on your filesystem. If that's the case, then you can use the `encrypter.py` script in the root of this project. This will encrypt your configuration file using AES in CFB mode and a passphrase you provide. Every time you run the shell, you'll have to provide the decryption key.
