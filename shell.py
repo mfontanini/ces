@@ -99,17 +99,21 @@ try:
     else:
         raise Exception('Unknown exchange {0}'.format(exchange_name))
 except Exception as ex:
-    print 'Failed to create {0} handle: {1}'.format(exchange_name, ex)
+    print '\rFailed to create {0} handle: {1}'.format(exchange_name, ex)
     exit(1)
 
 try:
     storage = Storage(config_manager.database_path)
     address_book = AddressBook(storage, handle)
 except Exception as ex:
-    print 'Failed to initialize storage: {0}'.format(ex)
+    print '\rFailed to initialize storage: {0}'.format(ex)
     exit(1)
 
-coin_db = CoinDatabase(config_manager.fiat_currency or 'usd')
+try:
+    coin_db = CoinDatabase(config_manager.fiat_currency or 'usd')
+except Exception as ex:
+    print '\rFailed to load coin database information: {0}'.format(ex)
+    exit(1)
 sys.stdout.write('\rFetching latest crypto currency metadata...')
 sys.stdout.flush()
 coin_db.wait_for_data()
