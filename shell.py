@@ -88,6 +88,9 @@ try:
     if len(config_manager.exchanges) > 1 and not args.exchange:
         print '-e parameter is needed when configuration file has multiple exchanges'
         exit(1)
+    if args.exchange and args.exchange not in config_manager.exchanges:
+        print 'Configuration is missing keys for {0}'.format(args.exchange)
+        exit(1)
     exchange_name = args.exchange or config_manager.exchanges.keys()[0]
     api_key = config_manager.exchanges[exchange_name].api_key
     api_secret = config_manager.exchanges[exchange_name].api_secret
