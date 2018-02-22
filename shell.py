@@ -33,6 +33,7 @@ import argparse
 import sys
 from ces.exchanges.bittrex_wrapper import BittrexWrapper
 from ces.exchanges.binance_wrapper import BinanceWrapper
+from ces.exchanges.kucoin_wrapper import KucoinWrapper
 from ces.commands import CommandManager
 from ces.shell_completer import ShellCompleter
 from ces.core import Core
@@ -76,7 +77,7 @@ except Exception as ex:
     exit(1)
 
 try:
-    valid_exchanges = ['bittrex', 'binance']
+    valid_exchanges = ['bittrex', 'binance', 'kucoin']
     for name in config_manager.exchanges:
         if name not in valid_exchanges:
             print 'Unknown exchange "{0}"'.format(name)
@@ -96,6 +97,8 @@ try:
         handle = BittrexWrapper(api_key, api_secret)
     elif exchange_name == 'binance':
         handle = BinanceWrapper(api_key, api_secret)
+    elif exchange_name == 'kucoin':
+        handle = KucoinWrapper(api_key, api_secret)
     else:
         raise Exception('Unknown exchange {0}'.format(exchange_name))
 except Exception as ex:

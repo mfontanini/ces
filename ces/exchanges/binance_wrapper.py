@@ -208,7 +208,7 @@ class BinanceWrapper(BaseExchangeWrapper):
             ))
         return output
 
-    def get_withdrawal_history(self):
+    def get_withdrawal_history(self, currency_code=None):
         result = self._perform_request(lambda: self._handle.get_withdraw_history())
         output = []
         for item in result.get("withdrawList", []):
@@ -288,7 +288,7 @@ class BinanceWrapper(BaseExchangeWrapper):
             locked
         )
 
-    def get_deposit_history(self):
+    def get_deposit_history(self, currency_code=None):
         result = self._perform_request(lambda: self._handle.get_deposit_history())
         output = []
         for i in result['depositList']:

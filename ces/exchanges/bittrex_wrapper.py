@@ -131,7 +131,7 @@ class BittrexWrapper(BaseExchangeWrapper):
             data['Balance'] - data['Available'] + data['Pending']
         )
 
-    def get_deposit_history(self):
+    def get_deposit_history(self, currency_code=None):
         result = self._handle.get_deposit_history()
         self._check_result(result)
         output = []
@@ -157,7 +157,7 @@ class BittrexWrapper(BaseExchangeWrapper):
                 )
         return output
 
-    def get_withdrawal_history(self):
+    def get_withdrawal_history(self, currency_code=None):
         result = self._handle.get_withdrawal_history()
         self._check_result(result)
         output = []

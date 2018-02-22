@@ -235,7 +235,12 @@ class OrderbookCommand(BaseCommand):
         )
         buy_rows = [['Rate', 'Quantity']]
         sell_rows = [['Rate', 'Quantity']]
-        for i in range(OrderbookCommand.MAX_LINES):
+        row_count = min(
+            OrderbookCommand.MAX_LINES,
+            len(buy_orderbook.orders),
+            len(sell_orderbook.orders)
+        )
+        for i in range(row_count):
             buy_rows.append(self._make_columns(buy_orderbook.orders[i], base_code, market_code,
                                                price, core.coin_db.fiat_currency))
             sell_rows.append(self._make_columns(sell_orderbook.orders[i], base_code, market_code,
@@ -331,6 +336,9 @@ class WalletCommand(BaseCommand):
 
 class DepositsCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([])
+    CURRENCY_PARAMETER_PARSER = ParameterParser([
+        PositionalParameter('currency', parameter_type=str)
+    ])
     HELP_TEMPLATE = {
         'usage' : '{0}',
         'short_description' : 'get the deposits made',
@@ -340,13 +348,20 @@ class DepositsCommand(BaseCommand):
     def __init__(self):
         BaseCommand.__init__(self, 'deposits')
 
-    def execute(self, core, raw_params):
+    def parameter_parser(self, core):
+        if core.exchange_handle.transfers_needs_asset():
+            return DepositsCommand.CURRENCY_PARAMETER_PARSER
+        else:
+            return DepositsCommand.PARAMETER_PARSER
+
+    def execute(self, core, params):
+        currency_code = params.get('currency', None)
         has_confirmations = core.exchange_handle.exposes_confirmations
         data = [
             ['Timestamp', 'Amount', 'Transaction id',
              'Confirmations' if has_confirmations else 'Status']
         ]
-        for deposit in core.exchange_handle.get_deposit_history():
+        for deposit in core.exchange_handle.get_deposit_history(currency_code):
             if has_confirmations:
                 status = '{0}/{1}'.format(deposit.confirmations, deposit.currency.min_confirmations)
             else:
@@ -362,6 +377,9 @@ class DepositsCommand(BaseCommand):
 
 class WithdrawalsCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([])
+    CURRENCY_PARAMETER_PARSER = ParameterParser([
+        PositionalParameter('currency', parameter_type=str)
+    ])
     HELP_TEMPLATE = {
         'usage' : '{0}',
         'short_description' : 'get the withdrawals made',
@@ -371,9 +389,16 @@ class WithdrawalsCommand(BaseCommand):
     def __init__(self):
         BaseCommand.__init__(self, 'withdrawals')
 
-    def execute(self, core, raw_params):
+    def parameter_parser(self, core):
+        if core.exchange_handle.transfers_needs_asset():
+            return DepositsCommand.CURRENCY_PARAMETER_PARSER
+        else:
+            return DepositsCommand.PARAMETER_PARSER
+
+    def execute(self, core, params):
+        currency_code = params.get('currency', None)
         cost_index = 2
-        withdrawals = core.exchange_handle.get_withdrawal_history()
+        withdrawals = core.exchange_handle.get_withdrawal_history(currency_code)
         data = [['Timestamp', 'Amount', 'Transaction id']]
         has_cost = any(map(lambda i: i.cost is not None, withdrawals))
         if has_cost:

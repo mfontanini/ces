@@ -88,3 +88,6 @@ class BaseExchangeWrapper:
 
     def order_history_needs_asset(self):
         return False
+
+    def transfers_needs_asset(self):
+        return False
