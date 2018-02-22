@@ -4,6 +4,7 @@ terminaltables==3.1.0
 requests==2.18.4
 dateparser==0.6.0
 python_bittrex==0.2.2
+python_kucoin==0.1.10
 pycrypto==2.6.1
 binance==0.2
 bittrex==0.1.4
