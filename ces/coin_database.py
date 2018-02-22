@@ -86,6 +86,10 @@ class CoinDatabase:
             else:
                 raise UnknownCurrencyException(code)
 
+    def has_coin(self, code):
+        with self._metadata_condition:
+            return code in self._metadata
+
     def poll_data(self):
         while self._running:
             result = None

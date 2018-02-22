@@ -1340,6 +1340,56 @@ history clear'''
                 for i in range(1, count + 1):
                     print readline.get_history_item(i)
 
+class WithdrawalFeesCommand(BaseCommand):
+    PARAMETER_PARSER = ParameterParser([
+        PositionalParameter('currency', parameter_type=str, required=False)
+    ])
+    HELP_TEMPLATE = {
+        'usage' : '{0} [currency]',
+        'short_description' : 'list the withdrawal fees in the exchange',
+        'long_description' : 'List all withdrawal fees or the fees for a specific coin',
+        'examples' : '''Print the withdrawal fee for Bitcoin 
+
+{0} BTC'''
+    }
+
+    def __init__(self):
+        BaseCommand.__init__(self, 'withdrawal_fees')
+
+    def _make_price(self, currency, core):
+        if core.coin_db.has_coin(currency.code):
+            return utils.make_price_string(
+                currency.withdraw_fee,
+                currency.code,
+                core.coin_db.get_currency_price(currency.code),
+                core.coin_db.fiat_currency
+            )
+        elif currency.withdraw_fee is None:
+            return '<unknown>'
+        return '{0} {1}'.format(utils.format_float(currency.withdraw_fee), currency.code)
+
+    def execute(self, core, params):
+        currencies = core.exchange_handle.get_currencies()
+        currencies = sorted(currencies, key=lambda i: i.name)
+        if 'currency' in params:
+            currencies = filter(lambda i: i.code == params['currency'], currencies)
+            if len(currencies) == 0:
+                print 'Exchange doesn\'t list fees for {0}'.format(params['currency'])
+                return
+            currency = currencies[0]
+            data = [
+                ['Currency', currency.name],
+                ['Withdrawal fee', self._make_price(currency, core)]
+            ]
+            table = AsciiTable(data, 'Fees')
+            table.inner_row_border = True
+        else:
+            data = [['Currency', 'Withdraw fee']]
+            for currency in currencies:
+                data.append([currency.name, self._make_price(currency, core)])
+            table = AsciiTable(data, 'Fees')
+        print table.table
+
 class CommandManager:
     def __init__(self):
         self._commands = {}
@@ -1361,6 +1411,7 @@ class CommandManager:
         self.add_command(AddressBookCommand())
         self.add_command(CoinInfoCommand())
         self.add_command(CommandHistoryCommand())
+        self.add_command(WithdrawalFeesCommand())
         self.add_command(UsageCommand())
         self.add_command(HelpCommand())
 
