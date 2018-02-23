@@ -52,3 +52,17 @@ class TestUtils(unittest.TestCase):
             '0.00000100',
             utils.make_appropriate_float_format_string(0.000001).format(0.000001)
         )
+
+    def test_coin_price(self):
+        self.assertEqual(
+            '15 XLM',
+            utils.CoinPrice('XLM').format_value(15)
+        )
+        self.assertEqual(
+            '15 XLM ($30)',
+            utils.CoinPrice('XLM', 2, 'usd').format_value(15)
+        )
+        self.assertEqual(
+            '15 XLM (AU$ 45)',
+            utils.CoinPrice('XLM', 3, 'aud').format_value(15)
+        )

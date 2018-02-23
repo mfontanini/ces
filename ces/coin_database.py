@@ -29,6 +29,7 @@ import requests
 import threading
 import json
 from exceptions import *
+from utils import CoinPrice
 
 class CoinMetadata:
     def __init__(self, name, price, rank, volume_24h, market_cap, available_supply, total_supply,
@@ -77,7 +78,12 @@ class CoinDatabase:
                 self._metadata_condition.wait()
 
     def get_currency_price(self, code):
-        return self.get_currency_metadata(code).price
+        if self.has_coin(code):
+            price = self.get_currency_metadata(code).price
+            return CoinPrice(code, price, self.fiat_currency)
+        else:
+            return CoinPrice(code)
+
 
     def get_currency_metadata(self, code):
         with self._metadata_condition:

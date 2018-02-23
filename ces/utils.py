@@ -56,6 +56,23 @@ class ParameterOptionVisitor:
     def visit_parameter_option(self, option):
         self.parameters.append(option)
 
+class CoinPrice:
+    def __init__(self, currency_code, fiat_currency_price = None, fiat_currency_code = None):
+        self.currency_code = currency_code
+        self.fiat_currency_price = fiat_currency_price
+        self.fiat_currency_code = fiat_currency_code
+
+    def format_value(self, currency_price):
+        if self.fiat_currency_price:
+            return make_price_string(
+                currency_price,
+                self.currency_code,
+                self.fiat_currency_price,
+                self.fiat_currency_code
+            )
+        else:
+            return '{0} {1}'.format(currency_price, self.currency_code)
+
 def format_float(number, number_format = '{0:.8f}'):
     # Format it, then remove right zeroes and remove dot if all decimals are gone
     return number_format.format(number).rstrip('0').rstrip('.')
