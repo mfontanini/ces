@@ -566,6 +566,21 @@ class PlaceOrderBaseCommand(BaseCommand):
                 utils.format_float(rate * amount),
             ))
 
+    def compute_amount(self, core, currency_code, amount_text, rate=None):
+        wallet = core.exchange_handle.get_wallet(currency_code)
+        operation_amount = utils.OrderAmount(amount_text)
+        if rate is None:
+            amount = operation_amount.compute_sell_units(wallet)
+        else:
+            amount = operation_amount.compute_purchasable_units(wallet, rate)
+        if (amount * (rate or 1.0)) > wallet.available:
+            if wallet.available == 0:
+                print '{0} wallet is empty'.format(currency_code)
+            else:
+                print 'Wallet only contains {0} {1}'.format(wallet.available, currency_code)
+            return None
+        return amount
+
 class SellCommand(PlaceOrderBaseCommand):
     HELP_TEMPLATE = {
         'usage' : '{0} <base-currency> <market-currency> amount <amount|max> rate <rate>',
@@ -597,30 +612,6 @@ Example using percentage of available amount:
 
     def __init__(self):
         PlaceOrderBaseCommand.__init__(self, 'sell')
-
-    def compute_amount(self, core, currency_code, amount):
-        wallet = core.exchange_handle.get_wallet(currency_code)
-        if amount == 'max':
-            amount = wallet.available
-        elif str(amount).endswith('%'):
-            try:
-                percentage = int(amount[:-1])
-            except ValueError:
-                raise CommandExecutionException('{0} is not a valid percentage'.format(amount))
-                return None
-            if (percentage > 100) or (percentage <= 0):
-                raise CommandExecutionException('{0} is not a valid percentage'.format(percentage))
-                return None
-            amount = (float(percentage) / 100) * wallet.available
-        else:
-            amount = float(amount)
-        if amount > wallet.available:
-            if wallet.available == 0:
-                print '{0} wallet is empty'.format(currency_code)
-            else:
-                print 'Wallet only contains {0} {1}'.format(wallet.available, currency_code)
-            return None
-        return amount
 
     def execute(self, core, params):
         base_currency_code = params['base-currency']
@@ -708,33 +699,6 @@ Example using percentage of available amount:
 
     def __init__(self):
         PlaceOrderBaseCommand.__init__(self, 'buy')
-
-    def compute_amount(self, core, currency_code, amount, rate):
-        wallet = core.exchange_handle.get_wallet(currency_code)
-        if amount == 'max':
-            amount = wallet.available / rate
-        elif str(amount).endswith('%'):
-            try:
-                percentage = int(amount[:-1])
-            except ValueError:
-                raise CommandExecutionException('{0} is not a valid percentage'.format(amount))
-                return None
-            if (percentage > 100) or (percentage <= 0):
-                raise CommandExecutionException('{0} is not a valid percentage'.format(percentage))
-                return None
-            amount = ((float(percentage) / 100) * wallet.available) / rate
-        else:
-            amount = float(amount)
-        if amount > wallet.available:
-            if wallet.available == 0:
-                raise CommandExecutionException('{0} wallet is empty'.format(currency_code))
-            else:
-                raise CommandExecutionException('Wallet only contains {0} {1}'.format(
-                        utils.format_float(wallet.available),
-                        currency_code
-                    ))
-            return None
-        return amount
 
     def execute(self, core, params):
         base_currency_code = params['base-currency']

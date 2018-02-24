@@ -181,6 +181,12 @@ while running:
             ex.base_currency_code,
             ex.market_currency_code
         )
+    except InvalidAmountException as ex:
+        output_manager.log_error(
+            'Invalid amount',
+            '{0}',
+            str(ex)
+        )
     except ParameterCountException as ex:
         mappings = {
             ParameterCountException.Expectation.exact : 'exactly',

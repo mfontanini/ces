@@ -1,5 +1,7 @@
 import unittest
 import ces.utils as utils
+from ces.models import Wallet, Currency
+from ces.exceptions import InvalidAmountException
 
 class TestUtils(unittest.TestCase):
     def test_rounding_by_whole_numbers(self):
@@ -65,4 +67,75 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(
             '15 XLM (AU$ 45)',
             utils.CoinPrice('XLM', 3, 'aud').format_value(15)
+        )
+
+    def test_operation_amount(self):
+        wallet = Wallet(
+            Currency('XLM', 'Lumens', None, None), 
+            200,
+            200,
+            0
+        )
+        # Sell tests
+        self.assertEqual(
+            200,
+            utils.OrderAmount('max').compute_sell_units(wallet)
+        )
+        self.assertEqual(
+            50,
+            utils.OrderAmount('25%').compute_sell_units(wallet)
+        )
+        self.assertEqual(
+            117,
+            utils.OrderAmount('117').compute_sell_units(wallet)
+        )
+        self.assertEqual(
+            0.1,
+            utils.OrderAmount('0.1').compute_sell_units(wallet)
+        )
+        # Buy tests
+        self.assertEqual(
+            100,
+            utils.OrderAmount('max').compute_purchasable_units(wallet, 2.0)
+        )
+        self.assertEqual(
+            400,
+            utils.OrderAmount('max').compute_purchasable_units(wallet, 0.5)
+        )
+        self.assertEqual(
+            25,
+            utils.OrderAmount('25%').compute_purchasable_units(wallet, 2.0)
+        )
+        self.assertEqual(
+            150,
+            utils.OrderAmount('150').compute_purchasable_units(wallet, 2.0)
+        )
+        self.assertEqual(
+            0.1,
+            utils.OrderAmount('0.1').compute_purchasable_units(wallet, 2.0)
+        )
+        # Failure cases
+        self.assertRaises(
+            InvalidAmountException,
+            lambda: utils.OrderAmount('101%').compute_sell_units(wallet)
+        )
+        self.assertRaises(
+            InvalidAmountException,
+            lambda: utils.OrderAmount('0%').compute_sell_units(wallet)
+        )
+        self.assertRaises(
+            InvalidAmountException,
+            lambda: utils.OrderAmount('-1%').compute_sell_units(wallet)
+        )
+        self.assertRaises(
+            InvalidAmountException,
+            lambda: utils.OrderAmount('a%').compute_sell_units(wallet)
+        )
+        self.assertRaises(
+            InvalidAmountException,
+            lambda: utils.OrderAmount('10 1').compute_sell_units(wallet)
+        )
+        self.assertRaises(
+            InvalidAmountException,
+            lambda: utils.OrderAmount('-1').compute_sell_units(wallet)
         )

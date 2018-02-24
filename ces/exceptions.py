@@ -103,3 +103,6 @@ class ParameterParsingException(CommandExecutionException):
     def __init__(self, line):
         CommandExecutionException.__init__(self, 'Failed to parse parameter "{0}"'.format(line))
         self.line = line
+
+class InvalidAmountException(BaseException):
+    pass

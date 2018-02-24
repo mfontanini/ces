@@ -44,6 +44,7 @@ from Crypto.Cipher import AES
 from Crypto import Random
 from dateutil.tz import tzutc, tzlocal
 from models import CandleTicks
+from exceptions import InvalidAmountException
 
 class ParameterOptionVisitor:
     def __init__(self):
@@ -72,6 +73,58 @@ class CoinPrice:
             )
         else:
             return '{0} {1}'.format(currency_price, self.currency_code)
+
+class MaxAmountImpl:
+    def compute_sell_units(self, wallet):
+        return wallet.available
+
+    def compute_purchasable_units(self, wallet, rate):
+        return wallet.available / rate
+
+class LiteralAmountImpl:
+    def __init__(self, value):
+        if value <= 0:
+            raise InvalidAmountException('Value has to be > 0')
+        self._value = value
+
+    def compute_sell_units(self, wallet):
+        return self._value
+
+    def compute_purchasable_units(self, wallet, rate):
+        return self._value
+
+class PercentageAmountImpl:
+    def __init__(self, percentage):
+        if percentage > 100 or percentage <= 0:
+            raise InvalidAmountException('Percentage has to be <= 100% and > 0%')
+        self._ratio = percentage / 100.0
+
+    def compute_sell_units(self, wallet):
+        return wallet.available * self._ratio
+
+    def compute_purchasable_units(self, wallet, rate):
+        return (wallet.available * self._ratio) / rate
+
+class OrderAmount:
+    def __init__(self, amount_text):
+        if amount_text == 'max':
+            self._impl = MaxAmountImpl()
+        elif amount_text.endswith('%'):
+            try:
+                self._impl = PercentageAmountImpl(float(amount_text[:-1]))
+            except ValueError:
+                raise InvalidAmountException('Failed to parse percentage')
+        else:
+            try:
+                self._impl = LiteralAmountImpl(float(amount_text))
+            except ValueError:
+                raise InvalidAmountException('Failed to parse value')
+
+    def compute_sell_units(self, wallet):
+        return self._impl.compute_sell_units(wallet)
+
+    def compute_purchasable_units(self, wallet, rate):
+        return self._impl.compute_purchasable_units(wallet, rate)
 
 def format_float(number, number_format = '{0:.8f}'):
     # Format it, then remove right zeroes and remove dot if all decimals are gone
