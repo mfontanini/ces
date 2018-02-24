@@ -1224,10 +1224,16 @@ class CoinInfoCommand(BaseCommand):
     def __init__(self):
         BaseCommand.__init__(self, 'coin_info')
 
+    def _format_number(self, number):
+        if number is None:
+            return '<unknown>'
+        if number >= 1000000:
+            return '{0:,d}'.format(int(number))
+        return utils.format_float(number)
+
     def execute(self, core, params):
         metadata = core.coin_db.get_currency_metadata(params['currency'])
-        fn = lambda value: '{0:,d}'.format(int(value)) if value >= 1000000 \
-                                                       else utils.format_float(value)
+        fn = self._format_number
         fmt_currency = lambda value: utils.format_fiat_currency(
             fn(value),
             core.coin_db.fiat_currency
