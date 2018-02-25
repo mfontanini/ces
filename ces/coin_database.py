@@ -107,6 +107,10 @@ class CoinDatabase:
                     coins.append(coin)
         return sorted(coins, key=lambda i: i.rank)
 
+    def get_coins(self):
+        with self._metadata_condition:
+            return self._metadata.values()
+
     def _extract_float(self, value):
         return None if value is None else float(value)
 

@@ -1217,9 +1217,11 @@ class CoinInfoCommand(BaseCommand):
             ]),
             ParameterGroup([
                 ConstParameter('action', keyword='list'),
-                ParameterGroup([
-                    NamedParameter('top', parameter_type=int),
-                ])
+                NamedParameter('top', parameter_type=int),
+            ]),
+            ParameterGroup([
+                ConstParameter('action', keyword='search'),
+                NamedParameter('name', parameter_type=str)
             ])
         ])
     ])
@@ -1238,11 +1240,11 @@ class CoinInfoCommand(BaseCommand):
     def _format_number(self, number):
         if number is None:
             return '<unknown>'
-        if number >= 1000000:
+        if number >= 1000:
             return '{0:,d}'.format(int(number))
         return utils.format_float(number)
 
-    def _show(self, core, currency, fmt_currency):
+    def _show_coin(self, core, currency, fmt_currency):
         metadata = core.coin_db.get_currency_metadata(currency)
         data = [
             ['Name', metadata.name],
@@ -1267,8 +1269,8 @@ class CoinInfoCommand(BaseCommand):
         table.inner_heading_row_border = False
         print table.table
 
-    def _list_top_coins(self, core, top, fmt_currency):
-        coins = core.coin_db.get_top_coins(top)
+    def _list_coins(self, coins, fmt_currency, title):
+        coins = sorted(coins, key=lambda c: c.rank)
         data = [['Rank', 'Name', 'Code', 'Price', 'Market cap']]
         for coin in coins:
             data.append([
@@ -1278,8 +1280,26 @@ class CoinInfoCommand(BaseCommand):
                 fmt_currency(coin.price),
                 fmt_currency(coin.market_cap)
             ])
-        table = AsciiTable(data, 'Top {0}'.format(top))
+        table = AsciiTable(data, title)
         print table.table
+
+    def _list_top_coins(self, core, top, fmt_currency):
+        coins = core.coin_db.get_top_coins(top)
+        self._list_coins(coins, fmt_currency, 'Top {0}'.format(top))
+
+    def _search_coin(self, core, match_string, fmt_currency):
+        match_string = match_string.lower()
+        coins = core.coin_db.get_coins()
+        matches = []
+        for coin in coins:
+            if match_string in coin.name.lower() or match_string in coin.code.lower():
+                matches.append(coin)
+        if len(matches) == 0:
+            print 'No coins found'
+        elif len(matches) == 1:
+            self._show_coin(core, matches[0].code, fmt_currency)
+        else:
+            self._list_coins(matches, fmt_currency, 'Coin matches')
 
     def execute(self, core, params):
         fmt_currency = lambda value: utils.format_fiat_currency(
@@ -1287,9 +1307,11 @@ class CoinInfoCommand(BaseCommand):
             core.coin_db.fiat_currency
         )
         if params['action'] == 'show':
-            self._show(core, params['currency'], fmt_currency)
+            self._show_coin(core, params['currency'], fmt_currency)
         elif params['action'] == 'list':
             self._list_top_coins(core, int(params['top']), fmt_currency)
+        elif params['action'] == 'search':
+            self._search_coin(core, params['name'], fmt_currency)
 
 class CommandHistoryCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
