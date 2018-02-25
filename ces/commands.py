@@ -1210,7 +1210,18 @@ class AddressBookCommand(BaseCommand):
 
 class CoinInfoCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([
-        PositionalParameter('currency', parameter_type=str)
+        ParameterChoice([
+            ParameterGroup([
+                ConstParameter('action', keyword='show'),
+                PositionalParameter('currency', parameter_type=str)
+            ]),
+            ParameterGroup([
+                ConstParameter('action', keyword='list'),
+                ParameterGroup([
+                    NamedParameter('top', parameter_type=int),
+                ])
+            ])
+        ])
     ])
     HELP_TEMPLATE = {
         'usage' : '{0} <currency>',
@@ -1231,32 +1242,54 @@ class CoinInfoCommand(BaseCommand):
             return '{0:,d}'.format(int(number))
         return utils.format_float(number)
 
-    def execute(self, core, params):
-        metadata = core.coin_db.get_currency_metadata(params['currency'])
-        fn = self._format_number
-        fmt_currency = lambda value: utils.format_fiat_currency(
-            fn(value),
-            core.coin_db.fiat_currency
-        )
+    def _show(self, core, currency, fmt_currency):
+        metadata = core.coin_db.get_currency_metadata(currency)
         data = [
             ['Name', metadata.name],
             ['Price', fmt_currency(metadata.price)],
             ['Rank', metadata.rank],
             ['24h volume', fmt_currency(metadata.volume_24h)],
             ['Market cap', fmt_currency(metadata.market_cap)],
-            ['Available supply', '{0} {1}'.format(fn(metadata.available_supply), params['currency'])],
-            ['Total supply', '{0} {1}'.format(fn(metadata.total_supply), params['currency'])],
+            ['Available supply', '{0} {1}'.format(self._format_number(metadata.available_supply),
+                                                  currency)],
+            ['Total supply', '{0} {1}'.format(self._format_number(metadata.total_supply),
+                                              currency)],
         ]
         if metadata.max_supply is not None:
-            data.append(['Max supply', '{0} {1}'.format(fn(metadata.max_supply), params['currency'])])
+            data.append(['Max supply', '{0} {1}'.format(self._format_number(metadata.max_supply),
+                                                        currency)])
         data += [
-            ['Change 1h', '{0}%'.format(fn(metadata.change_1h))],
-            ['Change 24h', '{0}%'.format(fn(metadata.change_24h))],
-            ['Change 7d', '{0}%'.format(fn(metadata.change_7d))],
+            ['Change 1h', '{0}%'.format(self._format_number(metadata.change_1h))],
+            ['Change 24h', '{0}%'.format(self._format_number(metadata.change_24h))],
+            ['Change 7d', '{0}%'.format(self._format_number(metadata.change_7d))],
         ]
-        table = AsciiTable(data, '{0} information'.format(params['currency']))
+        table = AsciiTable(data, '{0} information'.format(currency))
         table.inner_heading_row_border = False
         print table.table
+
+    def _list_top_coins(self, core, top, fmt_currency):
+        coins = core.coin_db.get_top_coins(top)
+        data = [['Rank', 'Name', 'Code', 'Price', 'Market cap']]
+        for coin in coins:
+            data.append([
+                coin.rank,
+                coin.name,
+                coin.code,
+                fmt_currency(coin.price),
+                fmt_currency(coin.market_cap)
+            ])
+        table = AsciiTable(data, 'Top {0}'.format(top))
+        print table.table
+
+    def execute(self, core, params):
+        fmt_currency = lambda value: utils.format_fiat_currency(
+            self._format_number(value),
+            core.coin_db.fiat_currency
+        )
+        if params['action'] == 'show':
+            self._show(core, params['currency'], fmt_currency)
+        elif params['action'] == 'list':
+            self._list_top_coins(core, int(params['top']), fmt_currency)
 
 class CommandHistoryCommand(BaseCommand):
     PARAMETER_PARSER = ParameterParser([

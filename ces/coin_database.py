@@ -33,8 +33,9 @@ from exceptions import *
 from utils import CoinPrice
 
 class CoinMetadata:
-    def __init__(self, name, price, rank, volume_24h, market_cap, available_supply, total_supply,
-                 max_supply, change_1h, change_24h, change_7d):
+    def __init__(self, code, name, price, rank, volume_24h, market_cap, available_supply,
+                 total_supply, max_supply, change_1h, change_24h, change_7d):
+        self.code = code
         self.name = name
         self.price = price
         self.rank = rank
@@ -87,7 +88,6 @@ class CoinDatabase:
         else:
             return CoinPrice(code)
 
-
     def get_currency_metadata(self, code):
         with self._metadata_condition:
             if code in self._metadata:
@@ -98,6 +98,14 @@ class CoinDatabase:
     def has_coin(self, code):
         with self._metadata_condition:
             return code in self._metadata
+
+    def get_top_coins(self, top_limit):
+        coins = []
+        with self._metadata_condition:
+            for coin in self._metadata.values():
+                if coin.rank is not None and coin.rank <= top_limit:
+                    coins.append(coin)
+        return sorted(coins, key=lambda i: i.rank)
 
     def _extract_float(self, value):
         return None if value is None else float(value)
@@ -136,6 +144,7 @@ class CoinDatabase:
                 for entry in result:
                     try:
                         coin = CoinMetadata(
+                            entry['symbol'],
                             entry['name'],
                             self._extract_float(entry['price_' + self.fiat_currency]),
                             int(entry['rank']),
@@ -216,6 +225,7 @@ class CoinDatabase:
                         attributes[key] = float(attributes[key].replace('%', ''))
                 try:
                     coin = CoinMetadata(
+                        attributes['code'],
                         attributes['name'],
                         attributes['price'],
                         int(attributes['rank']),
