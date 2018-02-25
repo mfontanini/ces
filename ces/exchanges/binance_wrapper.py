@@ -215,7 +215,7 @@ class BinanceWrapper(BaseExchangeWrapper):
             output.append(Transfer(
                 self._currencies[item['asset']],
                 item['amount'],
-                item['txId'],
+                item.get('txId', '<unknown>'),
                 None, # Confirmation
                 None, # Tx cost
                 item['status'] == 1, # Cancelled
