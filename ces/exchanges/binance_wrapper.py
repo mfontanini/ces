@@ -341,7 +341,7 @@ class BinanceWrapper(BaseExchangeWrapper):
         return CryptoAddress(
             currency_code,
             result['address'],
-            result.get('addresTag', None)
+            result.get('addressTag', None)
         )
 
     def get_candles(self, base_currency_code, market_currency_code, interval, limit):
