@@ -44,13 +44,13 @@ If you want to see how each command is used, you can use the `usage` command:
 
 ## Which exchanges are supported?
 
-Currently only [Bittrex](https://bittrex.com/) and [Binance](https://www.binance.com/) are supported but more can be easily added.
+Currently only [Bittrex](https://bittrex.com/), [Binance](https://www.binance.com/) and [Kucoin](http://www.kucoin.com) are supported but more can be easily added.
 
 ## Is this safe?
 
 Let me start by saying **you should use it under your own risk**.
 
-But yes, if you're concerned about something stealing your API keys then you shouldn't be as long as you trust the exchange wrappers used. This currently uses [python-bittrex](https://github.com/ericsomdahl/python-bittrex) and [python-binance](https://github.com/sammchardy/python-binance) to interact which each exchange's API, so there's nothing fishy. 
+But yes, if you're concerned about something stealing your API keys then you shouldn't be as long as you trust the exchange wrappers used. This currently uses [python-bittrex](https://github.com/ericsomdahl/python-bittrex), [python-binance](https://github.com/sammchardy/python-binance) and [python-kucoin](https://github.com/sammchardy/python-kucoin) to interact which each exchange's API, so there's nothing fishy. 
 
 If you're concerned about your funds being lost in badly interpreted/typed transaction (e.g. selling Bitcoin for $100 when it's worth $1000), then be sure you can always review your actions. Whenever an order is about to be placed or a withdraw is about to be made, a confirmation dialog will show up and you'll need to explicitly type "yes" for the action to be carried out. e.g.
 
