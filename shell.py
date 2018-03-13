@@ -206,6 +206,8 @@ while running:
             'Command execution error',
             str(ex)
         )
+    except KeyboardInterrupt:
+        print 'Command aborted'
     except Exception as ex:
         print 'Error: {0}'.format(ex)
         traceback.print_exc()
