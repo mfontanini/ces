@@ -1,7 +1,8 @@
+cryptography==2.3.1
 python_binance==0.6.2
 simpleeval==0.9.5
 terminaltables==3.1.0
-requests==2.18.4
+requests==2.20.1
 dateparser==0.6.0
 python_bittrex==0.2.2
 python_kucoin==0.1.10
@@ -9,5 +10,6 @@ pycrypto==2.6.1
 binance==0.2
 bittrex==0.1.4
 python_dateutil==2.6.1
+pyOpenSSL==18.0.0
 pyreadline==2.1
 PyYAML==3.12
