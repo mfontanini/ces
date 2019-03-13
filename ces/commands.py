@@ -1,3 +1,5 @@
+#-*-encoding:utf-8*-
+
 # Copyright (c) 2018, Matias Fontanini
 # All rights reserved.
 
@@ -34,6 +36,22 @@ from models import CandleTicks, Candle
 from simpleeval import simple_eval
 from exchanges.base_exchange_wrapper import OrderInvalidity
 from parameter_parser import *
+
+COLOR_HEAD = lambda x: '\033[' + str(x) + 'm'
+COLOR_TAIL = '\033[0m'
+
+RED = 31
+GREEN = 32
+
+CANDLE_BODY = u'\u2588'
+CANDLE_TAIL = u'\u2502'
+
+UP_CANDLE = COLOR_HEAD(GREEN) + CANDLE_BODY + COLOR_TAIL
+DOWN_CANDLE=COLOR_HEAD(RED) + CANDLE_BODY + COLOR_TAIL
+
+STICK_POS = COLOR_HEAD(GREEN) + CANDLE_TAIL + COLOR_TAIL
+STICK_NEG = COLOR_HEAD(RED) + CANDLE_TAIL + COLOR_TAIL
+STICK_STABLE = CANDLE_TAIL
 
 try:
     import readline
@@ -1024,18 +1042,19 @@ BTC/XLM market:
             for i in range(CandlesCommand.HEIGHT):
                 value = i / float(CandlesCommand.HEIGHT)
                 if value >= bottom and value <= top:
-                    column.append(u'\u028C' if close_value > open_value else 'v')
+                    column.append(UP_CANDLE if close_value > open_value else DOWN_CANDLE)
                     total_written += 1
                 elif value > low_value and value < high_value:
-                    column.append(u'\u00A6')
+                    column.append(STICK_POS if close_value > open_value else STICK_NEG)
                     total_written += 1
                 else:
                     column.append(' ')
             if total_written == 0:
-                column[int(high_value * (CandlesCommand.HEIGHT - 1))] = u'\u00A6'
+                column[int(high_value * (CandlesCommand.HEIGHT - 1))] = STICK_STABLE
             column.reverse()
             matrix.append(column)
         return matrix
+
 
     def execute(self, core, params):
         base_currency_code = params['base-currency']

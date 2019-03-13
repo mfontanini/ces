@@ -13,7 +13,7 @@ The shell-like interface makes it easy to place orders, jump between different m
 
 I find it much simpler to type down a command than to have to click/scroll through an interface until I find what I need. For example, seeing the price fluctuation for the Ethereum/Stellar lumens market is as simple as this:
 
-![](https://i.imgur.com/gLB9u3o.png)
+![](https://i.imgur.com/GTF9su2.png)
 
 Note that at any point you can press _TAB_ and that will display the list of possible terms/parameters to use next.
 
